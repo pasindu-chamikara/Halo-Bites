@@ -14,10 +14,11 @@ export const metadata: Metadata = {
   description: "Delicious treats and premium bites delivered to you.",
   icons: {
     icon: [
-      { url: "/logo.png", type: "image/png" },
+      { url: "/logo.png?v=2", type: "image/png" },
+      { url: "/favicon.ico?v=2" },
     ],
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    shortcut: "/logo.png?v=2",
+    apple: "/logo.png?v=2",
   },
 };
 
@@ -28,6 +29,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/logo.png?v=2" type="image/png" sizes="any" />
+        <link rel="apple-touch-icon" href="/logo.png?v=2" />
+      </head>
       <body className={`${inter.variable} font-sans min-h-screen flex flex-col bg-zinc-50 text-zinc-950`}>
         <AuthProvider>
           <CartProvider>
