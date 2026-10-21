@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, CheckCircle2, AlertCircle, X, Shield, User, KeyRound } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { validateEmail, validatePassword, validateLoginForm } from '@/validation/auth';
 
@@ -103,14 +103,6 @@ export default function LoginPage() {
         password: check.isValid ? undefined : check.error,
       }));
     }
-  };
-
-  const handleFillDemo = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setErrors({});
-    setTouched({ email: true, password: true });
-    setToast((prev) => ({ ...prev, show: false }));
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -292,39 +284,6 @@ export default function LoginPage() {
           <div className="mb-8 text-center lg:text-left">
             <h1 className="text-4xl font-black uppercase tracking-tight text-[#050505] mb-2">Welcome Back</h1>
             <p className="text-zinc-500">Please enter your details to sign in.</p>
-          </div>
-
-          {/* Autofill Demo Credentials helper */}
-          <div className="mb-6 p-4 bg-zinc-50 border border-zinc-200">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-zinc-700 mb-2">
-              <KeyRound size={13} className="text-[#E91E63]" />
-              <span>Quick Test Credentials</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                id="demo-customer-btn"
-                onClick={() => handleFillDemo('customer@halobites.com', 'password123')}
-                className="p-2 bg-white hover:bg-[#FFF5F8] border border-zinc-200 hover:border-[#E91E63] text-left transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-900 group-hover:text-[#E91E63]">
-                  <User size={11} /> Customer
-                </div>
-                <span className="block text-[9px] text-zinc-400 font-mono truncate">customer@halobites.com</span>
-              </button>
-
-              <button
-                type="button"
-                id="demo-admin-btn"
-                onClick={() => handleFillDemo('adminsuper@halobites.com', 'Staff@Halo2026!')}
-                className="p-2 bg-white hover:bg-[#FFF5F8] border border-zinc-200 hover:border-[#E91E63] text-left transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-900 group-hover:text-[#E91E63]">
-                  <Shield size={11} /> Super Admin
-                </div>
-                <span className="block text-[9px] text-zinc-400 font-mono truncate">adminsuper@halobites.com</span>
-              </button>
-            </div>
           </div>
 
           {isSuccess ? (
