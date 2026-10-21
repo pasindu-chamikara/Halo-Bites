@@ -12,7 +12,25 @@ export default function ReportsPage() {
   useEffect(() => {
     const loadReportsData = async () => {
       try {
-        const allOrders = await getStoredOrdersAsync();
+        let allOrders: any[] = [];
+        try {
+          if (typeof getStoredOrdersAsync === 'function') {
+            allOrders = await getStoredOrdersAsync();
+          }
+        } catch (err) {
+          console.warn('Error reading stored orders:', err);
+        }
+
+        if (!allOrders || allOrders.length === 0) {
+          const local = (typeof window !== 'undefined' ? localStorage.getItem('halo_bites_admin_orders') : null);
+          if (local) {
+            try {
+              const parsed = JSON.parse(local);
+              if (Array.isArray(parsed)) allOrders = parsed.filter(o => !isTestOrder(o));
+            } catch {}
+          }
+        }
+
         setOrders(allOrders);
 
         // Aggregate product sales from real orders

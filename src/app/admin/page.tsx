@@ -21,8 +21,23 @@ export default function AdminOverview() {
       }
 
       // 2. Load all real orders from Cloud Firestore and local storage
-      const rawOrders = await getStoredOrdersAsync();
-      const allRealOrders = rawOrders.map(o => {
+      let rawOrders: any[] = [];
+      try {
+        if (typeof getStoredOrdersAsync === 'function') {
+          rawOrders = await getStoredOrdersAsync();
+        }
+      } catch (err) {
+        console.warn('Error reading stored orders:', err);
+      }
+
+      if (!rawOrders || rawOrders.length === 0) {
+        const local = await getPersistentData<any[]>('halo_bites_admin_orders');
+        if (local && Array.isArray(local)) {
+          rawOrders = local.filter(o => !isTestOrder(o));
+        }
+      }
+
+      const allRealOrders = (rawOrders || []).map(o => {
         const customerName = typeof o.customer === 'string'
           ? o.customer
           : `${o.customer?.firstName || ''} ${o.customer?.lastName || ''}`.trim() || 'Customer';

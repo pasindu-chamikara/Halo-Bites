@@ -22,7 +22,24 @@ export default function CustomersPage() {
   const loadCustomers = async () => {
     try {
       // 1. Gather all real orders from Cloud Firestore, admin, and user storage
-      const allOrders = await getStoredOrdersAsync();
+      let allOrders: any[] = [];
+      try {
+        if (typeof getStoredOrdersAsync === 'function') {
+          allOrders = await getStoredOrdersAsync();
+        }
+      } catch (err) {
+        console.warn('Error reading stored orders:', err);
+      }
+
+      if (!allOrders || allOrders.length === 0) {
+        const local = (typeof window !== 'undefined' ? localStorage.getItem('halo_bites_admin_orders') : null);
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            if (Array.isArray(parsed)) allOrders = parsed.filter(o => !isTestOrder(o));
+          } catch {}
+        }
+      }
 
       // Map customers strictly by email or name from real placed orders
       const customerMap = new Map<string, CustomerItem>();

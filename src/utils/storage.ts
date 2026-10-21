@@ -1,3 +1,5 @@
+"use client";
+
 // Storage utility with IndexedDB backing and client-side image compression
 // Solves browser localStorage quota limits permanently for rich media
 
