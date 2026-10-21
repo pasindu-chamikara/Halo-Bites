@@ -8,28 +8,14 @@ import {
   Trash2, 
   Check, 
   X, 
-  AlertCircle, 
-  Users, 
-  Lock, 
-  Eye, 
-  Sparkles,
   Store,
-  ShieldCheck,
-  Database,
-  Cloud,
-  Download,
-  Upload,
-  RefreshCw,
-  ExternalLink
+  ShieldCheck
 } from 'lucide-react';
 import { AdminRole, useAuth } from '@/context/AuthContext';
 import { StaffMember, INITIAL_STAFF_MEMBERS, ROLES_METADATA } from '@/utils/rbac';
 import { 
   setPersistentData, 
-  getPersistentData, 
-  syncAllCatalogToCloud, 
-  exportCatalogBackup, 
-  importCatalogBackup 
+  getPersistentData 
 } from '@/utils/storage';
 
 interface StoreSettings {
@@ -43,12 +29,7 @@ interface StoreSettings {
 
 export default function SettingsPage() {
   const { adminRole, setAdminRole } = useAuth();
-  const [activeTab, setActiveTab] = useState<'rbac' | 'general' | 'cloud'>('rbac');
-
-  // Cloud Sync State
-  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
-  const [cloudSyncMsg, setCloudSyncMsg] = useState('');
-  const [cloudSyncError, setCloudSyncError] = useState('');
+  const [activeTab, setActiveTab] = useState<'rbac' | 'general'>('rbac');
 
   // Staff State
   const [staffList, setStaffList] = useState<StaffMember[]>(INITIAL_STAFF_MEMBERS);
@@ -182,62 +163,6 @@ export default function SettingsPage() {
     setTimeout(() => setSettingsSavedMsg(''), 4000);
   };
 
-  const handleSyncToCloud = async () => {
-    setIsSyncingCloud(true);
-    setCloudSyncMsg('');
-    setCloudSyncError('');
-    try {
-      const res = await syncAllCatalogToCloud();
-      if (res.success) {
-        setCloudSyncMsg(res.message);
-      } else {
-        setCloudSyncError(res.message);
-      }
-    } catch (err: any) {
-      setCloudSyncError(err?.message || 'Failed to sync to cloud database.');
-    } finally {
-      setIsSyncingCloud(false);
-    }
-  };
-
-  const handleExportCatalog = async () => {
-    try {
-      const json = await exportCatalogBackup();
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `halo-bites-catalog-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      setCloudSyncMsg('Catalog exported successfully to JSON file.');
-      setTimeout(() => setCloudSyncMsg(''), 4000);
-    } catch (err: any) {
-      setCloudSyncError(err?.message || 'Failed to export catalog');
-    }
-  };
-
-  const handleImportCatalog = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const res = await importCatalogBackup(text);
-      if (res.success) {
-        setCloudSyncMsg(`Catalog imported successfully! Restored ${res.count} items.`);
-        setTimeout(() => {
-          setCloudSyncMsg('');
-          window.location.reload();
-        }, 1500);
-      } else {
-        setCloudSyncError(res.error || 'Failed to import catalog');
-      }
-    } catch (err: any) {
-      setCloudSyncError(err?.message || 'Failed to read file');
-    }
-  };
 
   return (
     <div className="space-y-8 font-sans">
@@ -266,18 +191,6 @@ export default function SettingsPage() {
         >
           <Store size={15} />
           General Store Settings
-        </button>
-
-        <button
-          onClick={() => setActiveTab('cloud')}
-          className={`flex items-center gap-2 px-6 py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 cursor-pointer ${
-            activeTab === 'cloud'
-              ? 'text-[#E91E63] border-[#E91E63] bg-white/5'
-              : 'text-zinc-400 border-transparent hover:text-white'
-          }`}
-        >
-          <Database size={15} />
-          Cloud Database & Live Sync
         </button>
       </div>
 
@@ -661,177 +574,6 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
-      )}
-
-      {/* TAB 3: Cloud Database & Live Sync */}
-      {activeTab === 'cloud' && (
-        <div className="space-y-8 animate-in fade-in-50">
-          
-          {/* Header Banner */}
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 sm:p-8">
-            <div className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#E91E63] mb-2 bg-[#E91E63]/10 px-2.5 py-1 border border-[#E91E63]/25">
-              <Cloud size={12} /> Real-Time Cross-Device Synchronization
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-white">
-              Cloud Database & Live Catalog Sync
-            </h2>
-            <p className="text-xs sm:text-sm text-zinc-400 mt-1 max-w-2xl leading-relaxed">
-              Synchronize your bakery products, categories, images, and inventory across local development (localhost:3000) and production deployment (halo-bites.vercel.app).
-            </p>
-          </div>
-
-          {/* Feedback Notices */}
-          {cloudSyncMsg && (
-            <div className="p-4 bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 text-xs font-semibold flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Check size={16} className="text-emerald-400" />
-                {cloudSyncMsg}
-              </span>
-              <button onClick={() => setCloudSyncMsg('')} className="text-zinc-400 hover:text-white">
-                <X size={14} />
-              </button>
-            </div>
-          )}
-
-          {cloudSyncError && (
-            <div className="p-4 bg-amber-950/60 border border-amber-500/50 text-amber-200 text-xs font-semibold flex flex-col gap-2">
-              <div className="flex items-start justify-between">
-                <span className="flex items-start gap-2">
-                  <AlertCircle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
-                  <span>{cloudSyncError}</span>
-                </span>
-                <button onClick={() => setCloudSyncError('')} className="text-zinc-400 hover:text-white">
-                  <X size={14} />
-                </button>
-              </div>
-              <p className="text-[11px] text-zinc-400 pl-6">
-                Tip: You can activate Cloud Firestore in 1 click at{' '}
-                <a 
-                  href="https://console.firebase.google.com/project/halo-bites/firestore" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-[#E91E63] underline font-bold"
-                >
-                  Firebase Console → Create Database
-                </a>. In the meantime, use the Instant JSON Export/Import below to sync immediately.
-              </p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* Card 1: Cloud Firestore Sync */}
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 p-8 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
-                  <div className="flex items-center gap-2.5">
-                    <Database size={20} className="text-[#E91E63]" />
-                    <h3 className="text-lg font-black uppercase tracking-tight text-white">
-                      Firebase Cloud Database
-                    </h3>
-                  </div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 border border-emerald-500/40 bg-emerald-500/10 text-emerald-400">
-                    Auto-Configured
-                  </span>
-                </div>
-
-                <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
-                  Upload all current products and categories from your browser storage directly into Firebase Cloud Firestore. Once synchronized, any updates made by administrators will stream live to all visitors on both localhost and Vercel.
-                </p>
-
-                <div className="space-y-2.5 bg-black/40 border border-white/5 p-4 text-xs font-mono mb-6">
-                  <div className="flex justify-between">
-                    <span className="text-zinc-500">Project:</span>
-                    <span className="text-white font-bold">halo-bites</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-zinc-500">Collections:</span>
-                    <span className="text-white">products, categories</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-zinc-500">Offline Fallback:</span>
-                    <span className="text-emerald-400 font-bold">Active (IndexedDB)</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleSyncToCloud}
-                disabled={isSyncingCloud}
-                className="w-full flex items-center justify-center gap-2 bg-[#E91E63] text-white py-3.5 px-4 text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all shadow-lg shadow-[#E91E63]/20 disabled:opacity-50 cursor-pointer"
-              >
-                {isSyncingCloud ? (
-                  <>
-                    <RefreshCw size={14} className="animate-spin" />
-                    <span>Synchronizing to Cloud...</span>
-                  </>
-                ) : (
-                  <>
-                    <Cloud size={14} />
-                    <span>Sync Local Catalog to Cloud Firestore</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Card 2: Instant JSON Migration & Backup */}
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 p-8 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
-                  <div className="flex items-center gap-2.5">
-                    <Download size={20} className="text-[#E91E63]" />
-                    <h3 className="text-lg font-black uppercase tracking-tight text-white">
-                      Instant JSON Catalog Migration
-                    </h3>
-                  </div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 border border-[#E91E63]/40 bg-[#E91E63]/10 text-[#E91E63]">
-                    100% Offline Ready
-                  </span>
-                </div>
-
-                <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
-                  Need to instantly mirror your exact localhost catalog to your deployed website on Vercel without configuring cloud rules? Export the JSON file on localhost, open your Vercel admin dashboard, and click Import!
-                </p>
-
-                <div className="space-y-3 mb-6">
-                  <div className="p-3 bg-black/40 border border-white/5 text-xs">
-                    <span className="text-white font-bold block mb-1">Step 1: On Localhost:3000</span>
-                    <span className="text-zinc-400 text-[11px]">Click "Export Catalog (JSON)" below to download your current items.</span>
-                  </div>
-                  <div className="p-3 bg-black/40 border border-white/5 text-xs">
-                    <span className="text-white font-bold block mb-1">Step 2: On halo-bites.vercel.app</span>
-                    <span className="text-zinc-400 text-[11px]">Log in to /admin/settings, open this tab, and click "Import Catalog (JSON)".</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={handleExportCatalog}
-                  className="flex items-center justify-center gap-2 bg-white/10 text-white hover:bg-white hover:text-black py-3.5 px-4 text-xs font-bold uppercase tracking-wider transition-colors border border-white/10 cursor-pointer"
-                >
-                  <Download size={14} />
-                  <span>Export Catalog (JSON)</span>
-                </button>
-
-                <label className="flex items-center justify-center gap-2 bg-[#E91E63] text-white hover:bg-white hover:text-black py-3.5 px-4 text-xs font-bold uppercase tracking-wider transition-colors shadow-lg shadow-[#E91E63]/20 cursor-pointer">
-                  <Upload size={14} />
-                  <span>Import Catalog (JSON)</span>
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleImportCatalog}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
       )}
 
     </div>
