@@ -43,7 +43,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-bold text-black mb-4">5. Contact Information</h2>
             <p>
-              Questions about the Terms and Conditions should be sent to us at hello@halobites.com.
+              Questions about the Terms and Conditions should be sent to us at <a href="mailto:hello@halobites.com" id="terms-email-link" className="text-[#E91E63] font-semibold hover:underline">hello@halobites.com</a>.
             </p>
           </section>
         </div>

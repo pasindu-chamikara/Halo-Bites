@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { Mail, Phone, MapPin, Clock, ArrowRight } from 'lucide-react';
 
 export default function ContactPage() {
@@ -28,7 +29,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-bold text-sm uppercase tracking-wider text-zinc-500 mb-1">Email Us</h3>
-                    <p className="font-medium">hello@halobites.com</p>
+                    <a href="mailto:hello@halobites.com" id="contact-email-link" className="font-medium hover:text-[#E91E63] transition-colors">hello@halobites.com</a>
                   </div>
                 </div>
 
@@ -38,7 +39,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-bold text-sm uppercase tracking-wider text-zinc-500 mb-1">Call Us</h3>
-                    <p className="font-medium">306-509-5001</p>
+                    <a href="tel:306-509-5001" id="contact-phone-link" className="font-medium hover:text-[#E91E63] transition-colors">306-509-5001</a>
                   </div>
                 </div>
 
@@ -67,9 +68,9 @@ export default function ContactPage() {
             <div className="bg-black p-8 text-white">
               <h3 className="font-black text-xl uppercase mb-3">Looking for quick answers?</h3>
               <p className="text-zinc-400 mb-6 text-sm leading-relaxed">Check out our FAQ page for immediate answers regarding shipping, dietary restrictions, and customizing your surprise box.</p>
-              <a href="/faq" className="inline-flex items-center gap-2 text-[#E91E63] font-bold hover:text-white transition-colors">
+              <Link href="/faq" className="inline-flex items-center gap-2 text-[#E91E63] font-bold hover:text-white transition-colors">
                 Read FAQs <ArrowRight size={16} />
-              </a>
+              </Link>
             </div>
           </div>
 

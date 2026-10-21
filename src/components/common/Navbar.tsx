@@ -34,11 +34,11 @@ export default function Navbar() {
   }
 
   const navLinks = [
-    { label: 'Home', href: '/' },
-    { label: 'Shop', href: '/shop' },
-    { label: 'About', href: '/about' },
-    { label: 'Delivery Policy', href: '/delivery-policy' },
-    { label: 'My Orders', href: '/orders' },
+    { label: 'Home', href: '/', id: 'nav-link-home' },
+    { label: 'Shop', href: '/shop', id: 'nav-link-shop' },
+    { label: 'About', href: '/about', id: 'nav-link-about' },
+    { label: 'Delivery Policy', href: '/delivery-policy', id: 'nav-link-delivery-policy' },
+    { label: 'My Orders', href: '/my-orders', id: 'nav-link-my-orders' },
   ];
 
   return (
@@ -50,6 +50,7 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link 
               href="/" 
+              id="nav-logo-link"
               className="text-xl sm:text-[22px] font-[900] tracking-tight text-[#050505] flex items-center gap-1.5 focus:outline-none"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -66,6 +67,7 @@ export default function Navbar() {
                 <Link 
                   key={link.href} 
                   href={link.href} 
+                  id={link.id}
                   className={`transition-colors py-1 border-b-2 ${
                     isActive 
                       ? 'text-[#E91E63] border-[#E91E63]' 
@@ -83,7 +85,8 @@ export default function Navbar() {
             
             {/* Order Tracking */}
             <Link 
-              href="/orders" 
+              href="/my-orders" 
+              id="nav-truck-btn"
               title="Track Orders"
               className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center bg-zinc-50 hover:bg-zinc-100 text-zinc-700 transition-colors border border-zinc-200 rounded-none cursor-pointer"
             >
@@ -93,6 +96,7 @@ export default function Navbar() {
             {/* Cart Icon with Live Counter */}
             <Link 
               href="/cart" 
+              id="nav-cart-btn"
               title="Cart"
               className="relative flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center bg-zinc-50 hover:bg-zinc-100 text-zinc-700 transition-colors border border-zinc-200 rounded-none cursor-pointer"
             >
@@ -152,6 +156,7 @@ export default function Navbar() {
             {/* Mobile Menu Toggle Button (Hamburger / Close) */}
             <button
               type="button"
+              id="nav-mobile-menu-btn"
               onClick={() => setMobileMenuOpen(prev => !prev)}
               aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
               className="flex lg:hidden h-9 w-9 sm:h-10 sm:w-10 items-center justify-center bg-[#E91E63] text-white hover:bg-[#050505] transition-colors border border-transparent rounded-none cursor-pointer"
@@ -184,6 +189,7 @@ export default function Navbar() {
                     <Link
                       key={link.href}
                       href={link.href}
+                      id={`mobile-${link.id}`}
                       onClick={() => setMobileMenuOpen(false)}
                       className={`flex items-center justify-between px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors border ${
                         isActive

@@ -90,6 +90,12 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
             src={product.image} 
             alt={product.name} 
             onLoad={() => setIsImageLoaded(true)}
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.src = "/hero1.png";
+              setIsImageLoaded(true);
+            }}
             className={`w-[90%] h-[90%] object-contain transition-transform duration-500 ease-out group-hover:scale-105 ${
               isImageLoaded ? 'opacity-100' : 'opacity-80 scale-95'
             }`}

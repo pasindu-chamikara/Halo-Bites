@@ -8,10 +8,24 @@ import { Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const router = useRouter();
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) return;
+
+    try {
+      const existing = localStorage.getItem('halo_bites_registered_users');
+      const users = existing ? JSON.parse(existing) : [];
+      users.push({ name, email: email.trim().toLowerCase(), password });
+      localStorage.setItem('halo_bites_registered_users', JSON.stringify(users));
+    } catch {
+      // Ignore
+    }
+
     setIsSuccess(true);
     // Redirect to login after 2 seconds
     setTimeout(() => {
@@ -30,6 +44,11 @@ export default function RegisterPage() {
             src="/hero3.png" 
             alt="Halo Bites Delivery Box" 
             className="w-3/4 max-w-md object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-700"
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.onerror = null;
+              target.src = "/hero1.png";
+            }}
           />
           <div className="mt-12 max-w-md">
             <h2 className="text-3xl font-black uppercase tracking-tight text-[#050505] mb-4">Join the Club</h2>
@@ -63,6 +82,8 @@ export default function RegisterPage() {
                   type="text" 
                   id="name" 
                   required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   className="w-full bg-[#FAFAFA] border border-zinc-200 py-4 px-5 text-[15px] focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all"
                   placeholder="Jane Doe"
                 />
@@ -74,6 +95,8 @@ export default function RegisterPage() {
                   type="email" 
                   id="email" 
                   required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-[#FAFAFA] border border-zinc-200 py-4 px-5 text-[15px] focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all"
                   placeholder="you@example.com"
                 />
@@ -86,6 +109,8 @@ export default function RegisterPage() {
                     type={showPassword ? "text" : "password"}
                     id="password" 
                     required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-[#FAFAFA] border border-zinc-200 py-4 px-5 pr-12 text-[15px] focus:outline-none focus:border-[#E91E63] focus:ring-1 focus:ring-[#E91E63] transition-all"
                     placeholder="••••••••"
                   />

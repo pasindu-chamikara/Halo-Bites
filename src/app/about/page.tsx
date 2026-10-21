@@ -1,3 +1,5 @@
+"use client";
+
 import Link from 'next/link';
 import { Heart, Sparkles, Gift, ArrowRight } from 'lucide-react';
 
@@ -16,7 +18,17 @@ export default function AboutPage() {
             The Art Of
           </h1>
           <div className="flex items-center justify-center gap-4 md:gap-8 mt-2 md:mt-4">
-            <img src="/hero2.png" alt="Cake" className="w-24 md:w-56 h-24 md:h-56 object-cover hover:scale-110 transition-transform duration-700" />
+            <img 
+              src="/hero2.png" 
+              id="about-hero-img"
+              alt="Handcrafted artisan cake bite surprise box" 
+              className="w-24 md:w-56 h-24 md:h-56 object-cover hover:scale-110 transition-transform duration-700" 
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = "/hero1.png";
+              }}
+            />
             <h1 className="text-[15vw] md:text-[12vw] leading-none font-black tracking-tighter uppercase text-[#E91E63]">
               Surprise
             </h1>
@@ -53,7 +65,17 @@ export default function AboutPage() {
             
             <div className="group">
               <div className="overflow-hidden mb-8 bg-[#FFF5F8]">
-                <img src="/chooseyourbox.jpg" alt="Choose Box" className="w-full h-[40vh] md:h-[60vh] object-cover transition-transform duration-1000 group-hover:scale-105" />
+                <img 
+                  src="/chooseyourbox.jpg" 
+                  id="about-concept-img"
+                  alt="Curated collection of handcrafted surprise explosion boxes" 
+                  className="w-full h-[40vh] md:h-[60vh] object-cover transition-transform duration-1000 group-hover:scale-105" 
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.onerror = null;
+                    target.src = "/hero1.png";
+                  }}
+                />
               </div>
               <h3 className="text-3xl font-black uppercase mb-4 tracking-tight">01. The Concept</h3>
               <p className="text-zinc-500 text-lg md:text-xl leading-relaxed max-w-2xl">
@@ -63,7 +85,17 @@ export default function AboutPage() {
 
             <div className="group">
               <div className="overflow-hidden mb-8 bg-[#FFF5F8]">
-                <img src="/personalize.jpg" alt="Personalize" className="w-full h-[40vh] md:h-[60vh] object-cover transition-transform duration-1000 group-hover:scale-105" />
+                <img 
+                  src="/personalize.jpg" 
+                  id="about-craft-img"
+                  alt="Custom photo memories and artisanal bakery preparation" 
+                  className="w-full h-[40vh] md:h-[60vh] object-cover transition-transform duration-1000 group-hover:scale-105" 
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.onerror = null;
+                    target.src = "/hero1.png";
+                  }}
+                />
               </div>
               <h3 className="text-3xl font-black uppercase mb-4 tracking-tight">02. The Craft</h3>
               <p className="text-zinc-500 text-lg md:text-xl leading-relaxed max-w-2xl">
@@ -73,7 +105,17 @@ export default function AboutPage() {
 
             <div className="group">
               <div className="overflow-hidden mb-8 bg-[#FFF5F8]">
-                <img src="/scheduleandsend.jpg" alt="Send" className="w-full h-[40vh] md:h-[60vh] object-cover transition-transform duration-1000 group-hover:scale-105" />
+                <img 
+                  src="/scheduleandsend.jpg" 
+                  id="about-delivery-img"
+                  alt="Scheduled fresh packaging and temperature-controlled delivery" 
+                  className="w-full h-[40vh] md:h-[60vh] object-cover transition-transform duration-1000 group-hover:scale-105" 
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.onerror = null;
+                    target.src = "/hero1.png";
+                  }}
+                />
               </div>
               <h3 className="text-3xl font-black uppercase mb-4 tracking-tight">03. The Delivery</h3>
               <p className="text-zinc-500 text-lg md:text-xl leading-relaxed max-w-2xl">
@@ -110,7 +152,17 @@ export default function AboutPage() {
 
             {/* Image block */}
             <div className="md:col-span-1 md:row-span-2 bg-cover bg-center overflow-hidden group h-[300px] md:h-auto">
-               <img src="/hero6.png" className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-700 bg-zinc-100" />
+               <img 
+                 src="/hero6.png" 
+                 id="about-bento-hero6-img"
+                 alt="Signature gourmet frosted cake bite with sweet artisanal toppings" 
+                 className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-700 bg-zinc-100" 
+                 onError={(e) => {
+                   const target = e.currentTarget;
+                   target.onerror = null;
+                   target.src = "/hero1.png";
+                 }}
+               />
             </div>
 
             {/* Small bottom block */}

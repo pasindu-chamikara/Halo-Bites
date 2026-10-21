@@ -13,6 +13,7 @@ export default function DeliveryPolicyPage() {
         <div className="mb-8">
           <Link 
             href="/shop" 
+            id="dp-back-to-shop-link"
             className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-black transition-colors"
           >
             <ArrowLeft size={16} /> Back to Shop
@@ -104,7 +105,7 @@ export default function DeliveryPolicyPage() {
             </h2>
             <div className="space-y-3 text-sm text-zinc-600 leading-relaxed">
               <p>
-                Every treat box is packaged securely with food-safe insulation and protective supports. In the rare event of transit damage or delay beyond the scheduled slot, please contact our support team immediately at <strong className="text-zinc-900">hello@halobites.com</strong> with a photo, and we will issue an immediate fresh replacement or full refund.
+                Every treat box is packaged securely with food-safe insulation and protective supports. In the rare event of transit damage or delay beyond the scheduled slot, please contact our support team immediately at <a href="mailto:hello@halobites.com" id="dp-email-link" className="font-bold text-[#E91E63] hover:underline">hello@halobites.com</a> with a photo, and we will issue an immediate fresh replacement or full refund.
               </p>
             </div>
           </div>

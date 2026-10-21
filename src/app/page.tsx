@@ -192,13 +192,13 @@ export default function Home() {
   }, []);
 
   const heroImages = [
-    { src: "/hero1.png", alt: "Cake 1" },
-    { src: "/hero2.png", alt: "Cake 2" },
-    { src: "/hero3.png", alt: "Cake 3" },
-    { src: "/hero4.png", alt: "Cake 4" },
-    { src: "/hero5.png", alt: "Cake 5" },
-    { src: "/hero6.png", alt: "Cake 6" },
-    { src: "/hero7.png", alt: "Cake 7" }
+    { src: "/hero1.png", alt: "Strawberry Velvet Dream Box - Handcrafted Fresh Cake Bites" },
+    { src: "/hero2.png", alt: "Chocolate Bliss Truffle Bite Box - Artisan Confectionery" },
+    { src: "/hero3.png", alt: "Vanilla Rose Petal Cake Bite - Gourmet Dessert" },
+    { src: "/hero4.png", alt: "Golden Caramel Crunch Delights - Signature Pastry" },
+    { src: "/hero5.png", alt: "Matcha Mint Infusion Treat Box - Freshly Baked" },
+    { src: "/hero6.png", alt: "Berry Glazed Celebration Mini Cake - Premium Selection" },
+    { src: "/hero7.png", alt: "Classic Raspberry Swirl Cake Bite - Halo Bites Signature" }
   ];
 
   return (
@@ -286,6 +286,11 @@ export default function Home() {
                     src={img.src}
                     alt={img.alt}
                     className="w-full h-auto"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      target.onerror = null;
+                      target.src = "/hero1.png";
+                    }}
                   />
                 </div>
               </div>
@@ -298,6 +303,7 @@ export default function Home() {
         <div className="mt-[-10px] md:mt-[-15px] lg:mt-[-20px] relative z-40 pb-4 opacity-0 animate-fade-in-up delay-400">
           <Link
             href="/shop"
+            id="hero-order-now-btn"
             className="inline-flex items-center justify-center bg-[#E91E63] w-[154px] h-[42px] text-[14px] font-medium text-white transition-transform hover:scale-105 hover:bg-[#d81b5c]"
           >
             Order Now
@@ -316,6 +322,7 @@ export default function Home() {
           <div className="flex gap-3">
             <button
               onClick={() => scrollCategories('left')}
+              id="cat-scroll-left-btn"
               aria-label="Previous categories"
               className="flex h-12 w-12 items-center justify-center rounded-none bg-zinc-50 border border-zinc-200 text-zinc-400 hover:text-black hover:border-black transition-colors cursor-pointer"
             >
@@ -323,6 +330,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => scrollCategories('right')}
+              id="cat-scroll-right-btn"
               aria-label="Next categories"
               className="flex h-12 w-12 items-center justify-center rounded-none bg-[#E91E63] text-white hover:bg-[#d81b5c] shadow-sm transition-colors cursor-pointer"
             >
@@ -338,7 +346,8 @@ export default function Home() {
           {categories.map((cat) => (
             <Link
               key={cat.id}
-              href="/shop"
+              id={`home-cat-${cat.id}`}
+              href={`/shop?category=${encodeURIComponent(cat.name)}`}
               className="min-w-[260px] sm:min-w-[280px] lg:flex-1 group flex flex-col items-center text-center p-6 bg-[#F8DCE3]/40 border border-[#F8DCE3] rounded-none transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#FBA8BE]/20 snap-start"
             >
               <div className="w-48 h-48 rounded-none mb-6 overflow-hidden bg-white/50 border border-white/80 drop-shadow-sm flex items-center justify-center">
@@ -346,6 +355,11 @@ export default function Home() {
                   src={cat.image || "/hero1.png"}
                   alt={cat.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.onerror = null;
+                    target.src = "/hero1.png";
+                  }}
                 />
               </div>
               <div className="w-full text-center flex flex-col items-center flex-1 justify-between">
@@ -374,7 +388,16 @@ export default function Home() {
             {/* Step 1 */}
             <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
               <div className="flex-1 relative">
-                <img src="/chooseyourbox.jpg" alt="Choose" className="w-80 h-80 object-cover rounded-full mx-auto drop-shadow-xl" />
+                <img 
+                  src="/chooseyourbox.jpg" 
+                  alt="Curated surprise cake explosion box selection" 
+                  className="w-80 h-80 object-cover rounded-full mx-auto drop-shadow-xl" 
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.onerror = null;
+                    target.src = "/hero1.png";
+                  }}
+                />
               </div>
               <div className="flex-1 text-center md:text-left">
                 <h3 className="text-2xl font-bold text-black mb-2">Choose Your Box</h3>
@@ -385,7 +408,16 @@ export default function Home() {
             {/* Step 2 */}
             <div className="flex flex-col md:flex-row-reverse items-center gap-6 md:gap-10">
               <div className="flex-1 relative">
-                <img src="/personalize.jpg" alt="Personalize" className="w-80 h-80 object-cover rounded-full mx-auto drop-shadow-xl" />
+                <img 
+                  src="/personalize.jpg" 
+                  alt="Custom photos and handwritten messages inside gift box" 
+                  className="w-80 h-80 object-cover rounded-full mx-auto drop-shadow-xl" 
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.onerror = null;
+                    target.src = "/hero1.png";
+                  }}
+                />
               </div>
               <div className="flex-1 text-center md:text-left md:flex md:flex-col md:items-end">
                 <div className="max-w-sm">
@@ -398,7 +430,16 @@ export default function Home() {
             {/* Step 3 */}
             <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
               <div className="flex-1 relative">
-                <img src="/scheduleandsend.jpg" alt="Schedule" className="w-80 h-80 object-cover rounded-full mx-auto drop-shadow-xl" />
+                <img 
+                  src="/scheduleandsend.jpg" 
+                  alt="Scheduled fresh hand delivery of luxury cake treat box" 
+                  className="w-80 h-80 object-cover rounded-full mx-auto drop-shadow-xl" 
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.onerror = null;
+                    target.src = "/hero1.png";
+                  }}
+                />
               </div>
               <div className="flex-1 text-center md:text-left">
                 <h3 className="text-2xl font-bold text-black mb-2">Schedule & Send</h3>
@@ -498,19 +539,64 @@ export default function Home() {
         <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black mb-12">Our Sweetest Moments</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 auto-rows-[200px]">
           <div className="col-span-1 row-span-2 rounded-none overflow-hidden border border-zinc-200 group">
-            <img src="/1.jpg" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Sweetest Moment 1" />
+            <img 
+              src="/1.jpg" 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              alt="Artisan celebration cake presentation with delicate berry toppings" 
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = "/hero1.png";
+              }}
+            />
           </div>
           <div className="col-span-1 row-span-1 rounded-none overflow-hidden border border-zinc-200 group">
-            <img src="/2.jpg" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Sweetest Moment 2" />
+            <img 
+              src="/2.jpg" 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              alt="Handcrafted cupcakes with rich swirl frosting and sprinkles" 
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = "/hero1.png";
+              }}
+            />
           </div>
           <div className="col-span-1 row-span-2 rounded-none overflow-hidden border border-zinc-200 group">
-            <img src="/3.jpg" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Sweetest Moment 3" />
+            <img 
+              src="/3.jpg" 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              alt="Freshly boxed luxury dessert assortment ready for gifting" 
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = "/hero1.png";
+              }}
+            />
           </div>
           <div className="col-span-1 row-span-2 rounded-none overflow-hidden border border-zinc-200 group">
-            <img src="/4.jpg" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Sweetest Moment 4" />
+            <img 
+              src="/4.jpg" 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              alt="Delightful table spread of handcrafted bakery treats" 
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = "/hero1.png";
+              }}
+            />
           </div>
           <div className="col-span-1 row-span-1 rounded-none overflow-hidden border border-zinc-200 group">
-            <img src="/5.jpg" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Sweetest Moment 5" />
+            <img 
+              src="/5.jpg" 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              alt="Gourmet pastry showcase celebrating sweet milestones" 
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = "/hero1.png";
+              }}
+            />
           </div>
         </div>
       </section>
@@ -527,6 +613,7 @@ export default function Home() {
             </p>
             <Link 
               href="/shop" 
+              id="banner-order-now-btn"
               className="inline-block rounded-none bg-[#E91E63] px-6 py-3 font-bold text-xs uppercase tracking-widest text-white transition-all hover:bg-[#050505]"
             >
               Order Now
@@ -535,8 +622,13 @@ export default function Home() {
           <div className="relative z-10 w-full md:w-auto flex justify-center md:justify-end">
             <img 
               src="/treat.jpg" 
-              alt="Treat Yourself with Halo Bites" 
+              alt="Freshly baked signature dessert box ready for celebration" 
               className="w-full max-w-[320px] h-[240px] sm:h-[260px] object-cover rounded-none border border-[#F8DCE3]" 
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                target.src = "/hero1.png";
+              }}
             />
           </div>
         </div>

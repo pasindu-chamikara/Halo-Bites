@@ -60,6 +60,13 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
+  // Redirect to /shop with empty cart alert if cart has 0 items
+  useEffect(() => {
+    if (cartItems.length === 0 && !isSubmitting) {
+      router.push('/shop?alert=empty-cart');
+    }
+  }, [cartItems.length, isSubmitting, router]);
+
   // Set default delivery date to tomorrow
   useEffect(() => {
     const tomorrow = new Date();
@@ -783,7 +790,16 @@ export default function CheckoutPage() {
                   {cartItems.map((item) => (
                     <div key={item.id} className="py-3.5 flex items-center gap-4">
                       <div className="w-16 h-16 bg-[#FFF5F8] border border-[#F8DCE3] flex-shrink-0 flex items-center justify-center p-1.5 relative">
-                        <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
+                        <img 
+                          src={item.image} 
+                          alt={item.name} 
+                          className="w-full h-full object-contain" 
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.onerror = null;
+                            target.src = "/hero1.png";
+                          }}
+                        />
                         <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-black text-white text-[10px] font-bold flex items-center justify-center">
                           {item.quantity}
                         </span>

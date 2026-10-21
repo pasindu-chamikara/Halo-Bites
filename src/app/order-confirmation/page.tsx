@@ -285,7 +285,16 @@ function OrderConfirmationContent() {
                 return (
                   <div key={index} className="py-4 flex items-center gap-4">
                     <div className="w-16 h-16 bg-[#FFF5F8] border border-[#F8DCE3] flex-shrink-0 flex items-center justify-center p-1.5 relative">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
+                      <img 
+                        src={item.image} 
+                        alt={item.name} 
+                        className="w-full h-full object-contain" 
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.onerror = null;
+                          target.src = "/hero1.png";
+                        }}
+                      />
                       <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-black text-white text-[10px] font-bold flex items-center justify-center">
                         {itemQty}
                       </span>

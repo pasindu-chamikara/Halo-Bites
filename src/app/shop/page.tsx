@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, Star, Filter, Search } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { ShoppingBag, Star, Filter, Search, AlertCircle, X } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { getPersistentData } from '@/utils/storage';
 import ProductCard from '@/components/product/ProductCard';
@@ -76,12 +77,29 @@ const DEFAULT_PRODUCTS = [
 
 const DEFAULT_CATEGORIES = ["All", "Birthday Gifts", "Love Gifts", "Congrats Gifts", "Mother's Day"];
 
-export default function ShopPage() {
+function ShopContent() {
   const [products, setProducts] = useState(DEFAULT_PRODUCTS);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const { addToCart } = useCart();
+
+  const searchParams = useSearchParams();
+  const alertParam = searchParams.get('alert');
+  const categoryParam = searchParams.get('category');
+  const [showEmptyAlert, setShowEmptyAlert] = useState(false);
+
+  useEffect(() => {
+    if (categoryParam) {
+      setActiveCategory(categoryParam);
+    }
+  }, [categoryParam]);
+
+  useEffect(() => {
+    if (alertParam === 'empty-cart') {
+      setShowEmptyAlert(true);
+    }
+  }, [alertParam]);
 
   useEffect(() => {
     const loadStoreData = async () => {
@@ -114,9 +132,9 @@ export default function ShopPage() {
               .map((c: any) => (typeof c === 'string' ? c : c.name))
               .filter(Boolean);
           } else {
-            const rawCats = localStorage.getItem('halo_bites_admin_categories');
-            if (rawCats) {
-              const parsed = JSON.parse(rawCats);
+            const local = localStorage.getItem('halo_bites_admin_categories');
+            if (local) {
+              const parsed = JSON.parse(local);
               if (Array.isArray(parsed)) {
                 availableCats = parsed
                   .filter((c: any) => c.status !== 'Draft')
@@ -159,6 +177,33 @@ export default function ShopPage() {
     <div className="min-h-screen bg-[#FAFAFA] font-sans pt-32 pb-24">
       <div className="container mx-auto px-3 sm:px-6 lg:px-8 max-w-[1440px]">
         
+        {/* Inline Empty Cart Alert */}
+        {showEmptyAlert && (
+          <div 
+            id="shop-empty-cart-alert"
+            role="alert"
+            className="mb-8 p-4 bg-[#FFF5F8] border border-[#F8DCE3] text-[#E91E63] flex items-center justify-between shadow-xs animate-in fade-in-50"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-white border border-[#F8DCE3] flex items-center justify-center flex-shrink-0">
+                <AlertCircle size={18} className="text-[#E91E63]" />
+              </div>
+              <div>
+                <p className="font-bold text-sm">Your cart is empty.</p>
+                <p className="text-xs text-zinc-600 mt-0.5">Please add at least one treat or gift box to your cart before proceeding to checkout.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowEmptyAlert(false)}
+              className="text-zinc-400 hover:text-black text-sm p-1 cursor-pointer font-bold"
+              aria-label="Dismiss alert"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
         {/* Top Controls: Search & Categories */}
         <div className="mb-8 sm:mb-10 flex flex-col gap-4 sm:gap-6">
           <div className="w-full relative">
@@ -195,28 +240,40 @@ export default function ShopPage() {
         <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 md:gap-6 lg:gap-8">
           {filteredProducts.map(product => (
             <ProductCard
-                key={product.id}
-                product={product}
-                onAddToCart={(prod, qty) =>
-                  addToCart({
-                    id: typeof prod.id === 'number' ? prod.id : Number(prod.id) || 1,
-                    name: prod.name,
-                    price: prod.price,
-                    flavor: prod.category,
-                    image: prod.image
-                  }, qty)
-                }
-              />
-            ))}
-          </div>
+              key={product.id}
+              product={product}
+              onAddToCart={(prod, qty) =>
+                addToCart({
+                  id: typeof prod.id === 'number' ? prod.id : Number(prod.id) || 1,
+                  name: prod.name,
+                  price: prod.price,
+                  flavor: prod.category,
+                  image: prod.image
+                }, qty)
+              }
+            />
+          ))}
+        </div>
 
-          {filteredProducts.length === 0 && (
-            <div className="text-center py-24 bg-white border border-zinc-100">
-              <h3 className="text-xl font-bold text-[#050505] mb-2">No products found</h3>
-              <p className="text-[#777777]">Try adjusting your search or selecting a different category.</p>
-            </div>
-          )}
+        {filteredProducts.length === 0 && (
+          <div className="text-center py-24 bg-white border border-zinc-100">
+            <h3 className="text-xl font-bold text-[#050505] mb-2">No products found</h3>
+            <p className="text-[#777777]">Try adjusting your search or selecting a different category.</p>
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#FAFAFA] pt-32 pb-24 flex items-center justify-center font-sans text-zinc-500 text-sm">
+        Loading sweet treats catalog...
+      </div>
+    }>
+      <ShopContent />
+    </Suspense>
   );
 }

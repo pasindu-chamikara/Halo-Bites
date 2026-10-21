@@ -2,14 +2,27 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Minus, Plus, X, ArrowRight, ShoppingBag } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Minus, Plus, X, ArrowRight, ShoppingBag, AlertCircle } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 
 export default function CartPage() {
+  const router = useRouter();
   const { cartItems, removeFromCart, updateQuantity, cartTotal } = useCart();
 
-  const shipping = cartItems.length > 0 ? 5.00 : 0;
+  const isCartEmpty = cartItems.length === 0;
+  const shipping = !isCartEmpty ? 5.00 : 0;
   const total = cartTotal + shipping;
+
+  const handleCheckoutClick = (e: React.MouseEvent) => {
+    if (isCartEmpty) {
+      e.preventDefault();
+      e.stopPropagation();
+      router.push('/shop?alert=empty-cart');
+      return;
+    }
+    router.push('/checkout');
+  };
 
   return (
     <div className="bg-[#FAFAFA] min-h-screen pt-32 pb-24 font-sans text-[#050505]">
@@ -34,9 +47,22 @@ export default function CartPage() {
 
               {/* Items */}
               <div className="divide-y divide-zinc-100">
-                {cartItems.length === 0 ? (
-                  <div className="p-12 text-center text-zinc-500">
-                    Your cart is currently empty.
+                {isCartEmpty ? (
+                  <div id="cart-empty-state" className="p-12 text-center text-zinc-500">
+                    <div className="w-16 h-16 bg-[#FFF5F8] border border-[#F8DCE3] rounded-full flex items-center justify-center mx-auto mb-4 text-[#E91E63]">
+                      <ShoppingBag size={28} />
+                    </div>
+                    <h3 className="font-bold text-lg text-zinc-900 mb-1">Your cart is empty.</h3>
+                    <p className="text-xs text-zinc-500 mb-6 max-w-xs mx-auto">
+                      Looks like you haven't added any sweet treats or surprise boxes yet.
+                    </p>
+                    <Link
+                      href="/shop"
+                      id="cart-empty-explore-shop-btn"
+                      className="inline-flex items-center gap-2 bg-[#E91E63] hover:bg-[#050505] text-white px-6 py-3 text-xs font-bold uppercase tracking-wider transition-colors"
+                    >
+                      Explore The Shop
+                    </Link>
                   </div>
                 ) : (
                   cartItems.map((item) => (
@@ -44,7 +70,16 @@ export default function CartPage() {
                       
                       <div className="col-span-6 w-full flex items-center gap-6">
                         <div className="w-24 h-24 bg-[#FFF5F8] border border-[#F8DCE3] flex-shrink-0 flex items-center justify-center p-2 relative group">
-                          <img src={item.image} alt={item.name} className="w-full h-full object-contain drop-shadow-md group-hover:scale-110 transition-transform" />
+                          <img 
+                            src={item.image} 
+                            alt={item.name} 
+                            className="w-full h-full object-contain drop-shadow-md group-hover:scale-110 transition-transform" 
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              target.onerror = null;
+                              target.src = "/hero1.png";
+                            }}
+                          />
                           <button 
                             onClick={() => removeFromCart(item.id)}
                             className="absolute -top-2 -left-2 w-6 h-6 bg-white border border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-[#E91E63] hover:border-[#E91E63] transition-colors shadow-sm z-10"
@@ -88,7 +123,11 @@ export default function CartPage() {
             </div>
 
             <div className="mt-8 flex justify-between items-center">
-              <Link href="/shop" className="text-sm font-bold text-zinc-500 hover:text-[#E91E63] transition-colors flex items-center gap-2">
+              <Link 
+                href="/shop" 
+                id="cart-continue-shopping-link"
+                className="text-sm font-bold text-zinc-500 hover:text-[#E91E63] transition-colors flex items-center gap-2"
+              >
                 Continue Shopping
               </Link>
             </div>
@@ -119,13 +158,47 @@ export default function CartPage() {
                 <span className="text-4xl font-black text-[#E91E63]">Rs. {total.toFixed(2)}</span>
               </div>
 
-              <Link href="/checkout" className="w-full flex items-center justify-center gap-2 bg-[#050505] text-white font-black uppercase tracking-widest py-5 hover:bg-[#E91E63] transition-colors shadow-lg shadow-black/10 group">
-                Checkout Now <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
+              {/* Checkout Button & Alert Handling */}
+              <div className="space-y-3">
+                <div 
+                  onClick={handleCheckoutClick}
+                  className={`w-full ${isCartEmpty ? 'cursor-not-allowed' : ''}`}
+                >
+                  <button 
+                    type="button"
+                    disabled={isCartEmpty}
+                    aria-disabled={isCartEmpty}
+                    id="checkout-now-btn"
+                    className={`w-full flex items-center justify-center gap-2 font-black uppercase tracking-widest py-5 transition-colors shadow-lg ${
+                      isCartEmpty 
+                        ? 'bg-zinc-200 text-zinc-400 border border-zinc-200 shadow-none pointer-events-none' 
+                        : 'bg-[#050505] text-white hover:bg-[#E91E63] shadow-black/10 cursor-pointer group'
+                    }`}
+                  >
+                    <span>Checkout Now</span>
+                    <ArrowRight size={18} className={isCartEmpty ? '' : 'group-hover:translate-x-1 transition-transform'} />
+                  </button>
+                </div>
+
+                {/* Inline Empty Cart Alert */}
+                {isCartEmpty && (
+                  <div 
+                    id="cart-empty-alert"
+                    role="alert"
+                    className="p-3.5 bg-[#FFF5F8] border border-[#F8DCE3] text-[#E91E63] text-xs font-bold flex items-center gap-2 animate-in fade-in-50"
+                  >
+                    <AlertCircle size={15} className="flex-shrink-0" />
+                    <span>Your cart is empty.</span>
+                  </div>
+                )}
+              </div>
               
-              <div className="mt-6 text-center text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                Secure Checkout
+              <div 
+                id="cart-secure-checkout-indicator"
+                className="mt-6 text-center text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-2"
+              >
+                <svg id="secure-checkout-svg" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <span>Secure Checkout</span>
               </div>
             </div>
           </div>
@@ -135,3 +208,4 @@ export default function CartPage() {
     </div>
   );
 }
+

@@ -110,6 +110,7 @@ export default function MyOrdersPage() {
           </div>
           <Link
             href="/shop"
+            id="mo-order-more-btn"
             className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#E91E63] hover:underline"
           >
             Order More Treats <ChevronRight size={14} />
@@ -151,7 +152,17 @@ export default function MyOrdersPage() {
                   {order.items.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-6">
                       <div className="w-20 h-20 bg-[#FFF5F8] border border-[#F8DCE3] flex-shrink-0 flex items-center justify-center p-2">
-                        <img src={item.image} alt={item.name} className="w-full h-full object-contain drop-shadow-md" />
+                        <img 
+                          src={item.image} 
+                          id={`mo-item-img-${order.id}-${idx}`}
+                          alt={item.name} 
+                          className="w-full h-full object-contain drop-shadow-md" 
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.onerror = null;
+                            target.src = "/hero1.png";
+                          }}
+                        />
                       </div>
                       <div className="flex-1">
                         <h3 className="font-bold text-base mb-0.5">{item.name}</h3>
@@ -165,6 +176,7 @@ export default function MyOrdersPage() {
                 <div className="mt-8 flex flex-col sm:flex-row gap-4 border-t border-zinc-100 pt-6">
                   <Link
                     href={`/order-confirmation?orderId=${order.id}`}
+                    id={`mo-view-receipt-btn-${order.id}`}
                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#050505] text-white px-6 py-3 font-bold text-xs uppercase tracking-wider hover:bg-[#E91E63] transition-colors"
                   >
                     <Eye size={16} /> View Order & Receipt

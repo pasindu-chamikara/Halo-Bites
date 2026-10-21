@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { HelpCircle } from 'lucide-react';
 
 export default function FAQPage() {
@@ -46,7 +47,7 @@ export default function FAQPage() {
         <div className="mt-16 bg-[#FFF5F8] p-8 border border-[#F8DCE3] text-center">
           <h3 className="text-xl font-bold text-black mb-2">Still have questions?</h3>
           <p className="text-zinc-600 mb-6">Our customer support team is here to help.</p>
-          <a href="/contact" className="inline-block bg-[#E91E63] text-white font-bold py-3 px-8 hover:bg-black transition-colors">Contact Support</a>
+          <Link href="/contact" className="inline-block bg-[#E91E63] text-white font-bold py-3 px-8 hover:bg-black transition-colors">Contact Support</Link>
         </div>
       </div>
     </div>
