@@ -196,6 +196,8 @@ export function freeLocalStorageQuota(): void {
 }
 
 import { DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, CategoryItem, ProductItem } from '@/data/catalog';
+import { db } from '@/config/firebase';
+import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
 
 export const TEST_ORDER_IDS = ['ORD-1001', 'ORD-1002', 'ORD-1003', 'ORD-1004', 'ORD-1005', 'ORD-1006', 'ORD-98234-A', 'ORD-87122-B', 'ORD-75611-C'];
 export const TEST_CUSTOMERS = ['Jane Doe', 'John Smith', 'Alice Johnson', 'Bob Brown', 'Charlie Davis', 'Eva Green'];
@@ -296,6 +298,27 @@ export async function purgeAllTestDataFromBrowser(): Promise<{
 }
 
 export async function getStoredCategoriesAsync(): Promise<CategoryItem[]> {
+  // 1. Try reading from Firestore Cloud Database if in browser
+  if (typeof window !== 'undefined') {
+    try {
+      const snapshot = await getDocs(collection(db, 'categories'));
+      if (!snapshot.empty) {
+        const cloudCats: CategoryItem[] = [];
+        snapshot.forEach((snap) => {
+          cloudCats.push({ ...(snap.data() as CategoryItem), id: snap.id });
+        });
+        if (cloudCats.length > 0) {
+          await setPersistentData('halo_bites_admin_categories', cloudCats);
+          localStorage.setItem('halo_bites_admin_categories', JSON.stringify(cloudCats));
+          return cloudCats;
+        }
+      }
+    } catch {
+      // Cloud fallback to resilient local storage
+    }
+  }
+
+  // 2. Read from persistent local cache (IndexedDB / localStorage)
   try {
     let saved = await getPersistentData<CategoryItem[]>('halo_bites_admin_categories');
     if (!saved && typeof window !== 'undefined') {
@@ -311,7 +334,7 @@ export async function getStoredCategoriesAsync(): Promise<CategoryItem[]> {
     console.warn('Error reading stored categories:', err);
   }
 
-  // If storage was empty, initialize storage with DEFAULT_CATEGORIES so admin and storefront stay in sync
+  // 3. Fallback to DEFAULT_CATEGORIES
   if (typeof window !== 'undefined' && DEFAULT_CATEGORIES.length > 0) {
     saveStoredCategories(DEFAULT_CATEGORIES).catch(() => {});
   }
@@ -319,15 +342,46 @@ export async function getStoredCategoriesAsync(): Promise<CategoryItem[]> {
 }
 
 export async function saveStoredCategories(categories: CategoryItem[]): Promise<void> {
+  // 1. Save to local persistent storage immediately
   await setPersistentData('halo_bites_admin_categories', categories);
   if (typeof window !== 'undefined') {
     localStorage.setItem('halo_bites_admin_categories', JSON.stringify(categories));
     window.dispatchEvent(new Event('halo_bites_categories_updated'));
     window.dispatchEvent(new Event('storage'));
+
+    // 2. Mirror asynchronously to Cloud Firestore
+    try {
+      for (const cat of categories) {
+        await setDoc(doc(db, 'categories', String(cat.id)), cat, { merge: true });
+      }
+    } catch (err) {
+      // Cloud database notice - local storage remains 100% active
+    }
   }
 }
 
 export async function getStoredProductsAsync(): Promise<ProductItem[]> {
+  // 1. Try reading from Firestore Cloud Database if in browser
+  if (typeof window !== 'undefined') {
+    try {
+      const snapshot = await getDocs(collection(db, 'products'));
+      if (!snapshot.empty) {
+        const cloudProducts: ProductItem[] = [];
+        snapshot.forEach((snap) => {
+          cloudProducts.push({ ...(snap.data() as ProductItem), id: snap.id });
+        });
+        if (cloudProducts.length > 0) {
+          await setPersistentData('halo_bites_admin_products', cloudProducts);
+          localStorage.setItem('halo_bites_admin_products', JSON.stringify(cloudProducts));
+          return cloudProducts;
+        }
+      }
+    } catch {
+      // Cloud fallback to resilient local storage
+    }
+  }
+
+  // 2. Read from persistent local cache (IndexedDB / localStorage)
   try {
     let prods: ProductItem[] | null = await getPersistentData<ProductItem[]>('halo_bites_admin_products');
     if (!prods && typeof window !== 'undefined') {
@@ -344,7 +398,7 @@ export async function getStoredProductsAsync(): Promise<ProductItem[]> {
     console.warn('Error reading stored products:', err);
   }
 
-  // If storage was empty, initialize storage with DEFAULT_PRODUCTS so admin and storefront stay in sync
+  // 3. Fallback to DEFAULT_PRODUCTS
   if (typeof window !== 'undefined' && DEFAULT_PRODUCTS.length > 0) {
     saveStoredProducts(DEFAULT_PRODUCTS).catch(() => {});
   }
@@ -352,11 +406,91 @@ export async function getStoredProductsAsync(): Promise<ProductItem[]> {
 }
 
 export async function saveStoredProducts(products: ProductItem[]): Promise<void> {
+  // 1. Save to local persistent storage immediately
   await setPersistentData('halo_bites_admin_products', products);
   if (typeof window !== 'undefined') {
     localStorage.setItem('halo_bites_admin_products', JSON.stringify(products));
     window.dispatchEvent(new Event('halo_bites_products_updated'));
     window.dispatchEvent(new Event('storage'));
+
+    // 2. Mirror asynchronously to Cloud Firestore
+    try {
+      for (const prod of products) {
+        await setDoc(doc(db, 'products', String(prod.id)), prod, { merge: true });
+      }
+    } catch (err) {
+      // Cloud database notice - local storage remains 100% active
+    }
   }
 }
+
+/**
+ * Upload all current products and categories from local storage to Cloud Firestore
+ */
+export async function syncAllCatalogToCloud(): Promise<{ success: boolean; message: string; productsCount: number; categoriesCount: number }> {
+  try {
+    const prods = (await getPersistentData<ProductItem[]>('halo_bites_admin_products')) || DEFAULT_PRODUCTS;
+    const cats = (await getPersistentData<CategoryItem[]>('halo_bites_admin_categories')) || DEFAULT_CATEGORIES;
+
+    const prodsList = Array.isArray(prods) && prods.length > 0 ? prods : DEFAULT_PRODUCTS;
+    const catsList = Array.isArray(cats) && cats.length > 0 ? cats : DEFAULT_CATEGORIES;
+
+    for (const p of prodsList) {
+      await setDoc(doc(db, 'products', String(p.id)), p, { merge: true });
+    }
+    for (const c of catsList) {
+      await setDoc(doc(db, 'categories', String(c.id)), c, { merge: true });
+    }
+
+    return {
+      success: true,
+      message: `Successfully synchronized ${prodsList.length} products and ${catsList.length} categories to Cloud Firestore!`,
+      productsCount: prodsList.length,
+      categoriesCount: catsList.length
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || 'Could not reach Cloud Firestore. Please ensure Firestore API is enabled in your Firebase Console.',
+      productsCount: 0,
+      categoriesCount: 0
+    };
+  }
+}
+
+/**
+ * Export current products & categories as a downloadable JSON string
+ */
+export async function exportCatalogBackup(): Promise<string> {
+  const prods = await getStoredProductsAsync();
+  const cats = await getStoredCategoriesAsync();
+  return JSON.stringify({ products: prods, categories: cats, exportedAt: new Date().toISOString() }, null, 2);
+}
+
+/**
+ * Import products & categories from a JSON backup file
+ */
+export async function importCatalogBackup(jsonString: string): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (!parsed || (!parsed.products && !parsed.categories)) {
+      return { success: false, count: 0, error: 'Invalid file format. Missing products or categories.' };
+    }
+    let totalCount = 0;
+    if (Array.isArray(parsed.products) && parsed.products.length > 0) {
+      await saveStoredProducts(parsed.products);
+      totalCount += parsed.products.length;
+    }
+    if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {
+      await saveStoredCategories(parsed.categories);
+      totalCount += parsed.categories.length;
+    }
+    // Also attempt mirroring imported items to Cloud Firestore
+    syncAllCatalogToCloud().catch(() => {});
+    return { success: true, count: totalCount };
+  } catch (err: any) {
+    return { success: false, count: 0, error: err?.message || 'Failed to parse JSON file.' };
+  }
+}
+
 
