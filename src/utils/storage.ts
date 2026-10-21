@@ -197,21 +197,23 @@ export function freeLocalStorageQuota(): void {
 
 import { DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, CategoryItem, ProductItem } from '@/data/catalog';
 import { db } from '@/config/firebase';
-import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc } from 'firebase/firestore';
 
 export const TEST_ORDER_IDS = ['ORD-1001', 'ORD-1002', 'ORD-1003', 'ORD-1004', 'ORD-1005', 'ORD-1006', 'ORD-98234-A', 'ORD-87122-B', 'ORD-75611-C'];
 export const TEST_CUSTOMERS = ['Jane Doe', 'John Smith', 'Alice Johnson', 'Bob Brown', 'Charlie Davis', 'Eva Green'];
 
 export function isTestOrder(order: any): boolean {
-  if (!order) return true;
-  const id = String(order.id || '');
-  if (TEST_ORDER_IDS.includes(id) || id.startsWith('ORD-100')) return true;
+  if (!order || !order.id) return false;
+  const id = String(order.id);
+  // Match only exact known mock seed order IDs from original demo template
+  if (TEST_ORDER_IDS.includes(id)) return true;
+  // Match exact 4-digit mock IDs like ORD-1001 through ORD-1006
+  if (/^ORD-100[1-6]$/.test(id)) return true;
+  // Only match legacy mock customers if the ID is also one of the legacy mock template orders
   const cust = typeof order.customer === 'string'
     ? order.customer
     : `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim();
-  if (TEST_CUSTOMERS.some(c => c.toLowerCase() === cust.toLowerCase())) return true;
-  const email = (order.customerDetails?.email || order.customer?.email || '').toLowerCase();
-  if (email.includes('example.com') || email.includes('test.com')) return true;
+  if (TEST_CUSTOMERS.includes(cust) && TEST_ORDER_IDS.includes(id)) return true;
   return false;
 }
 
@@ -492,5 +494,104 @@ export async function importCatalogBackup(jsonString: string): Promise<{ success
     return { success: false, count: 0, error: err?.message || 'Failed to parse JSON file.' };
   }
 }
+
+/**
+ * Permanently delete a product from local storage AND Cloud Firestore
+ */
+export async function deleteStoredProduct(id: number | string): Promise<void> {
+  if (typeof window !== 'undefined') {
+    try {
+      await deleteDoc(doc(db, 'products', String(id)));
+    } catch (err) {
+      console.warn('Could not delete product from Firestore:', err);
+    }
+  }
+}
+
+/**
+ * Permanently delete a category from local storage AND Cloud Firestore
+ */
+export async function deleteStoredCategory(id: string): Promise<void> {
+  if (typeof window !== 'undefined') {
+    try {
+      await deleteDoc(doc(db, 'categories', String(id)));
+    } catch (err) {
+      console.warn('Could not delete category from Firestore:', err);
+    }
+  }
+}
+
+/**
+ * Fetch all real placed orders from Cloud Firestore, admin storage, and user storage.
+ * Synchronizes across multiple devices and browser sessions.
+ */
+export async function getStoredOrdersAsync(): Promise<any[]> {
+  const combinedMap = new Map<string, any>();
+
+  // 1. Fetch from Cloud Firestore
+  if (typeof window !== 'undefined') {
+    try {
+      const snapshot = await getDocs(collection(db, 'orders'));
+      if (!snapshot.empty) {
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data && data.id && !isTestOrder(data)) {
+            combinedMap.set(data.id, data);
+          }
+        });
+      }
+    } catch (e) {
+      // Local fallback
+    }
+  }
+
+  // 2. Fetch from persistent admin storage
+  try {
+    let adminOrders = await getPersistentData<any[]>('halo_bites_admin_orders');
+    if (!adminOrders && typeof window !== 'undefined') {
+      const local = localStorage.getItem('halo_bites_admin_orders');
+      if (local) {
+        try { adminOrders = JSON.parse(local); } catch {}
+      }
+    }
+    if (adminOrders && Array.isArray(adminOrders)) {
+      adminOrders.forEach((o) => {
+        if (o && o.id && !isTestOrder(o)) {
+          if (!combinedMap.has(o.id)) combinedMap.set(o.id, o);
+        }
+      });
+    }
+  } catch {}
+
+  // 3. Fetch from user checkout orders
+  if (typeof window !== 'undefined') {
+    try {
+      const localUser = localStorage.getItem('halo_bites_user_orders');
+      if (localUser) {
+        const userOrders = JSON.parse(localUser);
+        if (Array.isArray(userOrders)) {
+          userOrders.forEach((o) => {
+            if (o && o.id && !isTestOrder(o)) {
+              if (!combinedMap.has(o.id)) combinedMap.set(o.id, o);
+            }
+          });
+        }
+      }
+    } catch {}
+  }
+
+  const merged = Array.from(combinedMap.values());
+
+  // Cache back to local persistent storage
+  if (typeof window !== 'undefined' && merged.length > 0) {
+    try {
+      await setPersistentData('halo_bites_admin_orders', merged);
+      localStorage.setItem('halo_bites_admin_orders', JSON.stringify(merged));
+    } catch {}
+  }
+
+  return merged;
+}
+
 
 

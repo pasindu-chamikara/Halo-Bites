@@ -8,26 +8,29 @@ import {
   ArrowLeft, 
   ShieldCheck, 
   Truck, 
-  CreditCard, 
   Banknote, 
-  Building2, 
   Gift, 
   Calendar, 
   Clock, 
   CheckCircle2, 
   Tag, 
-  Lock 
+  Lock,
+  AlertCircle,
+  Sparkles,
+  Check
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { setPersistentData, getPersistentData } from '@/utils/storage';
+import { db } from '@/config/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartItems, cartTotal, clearCart } = useCart();
+  const { cartItems, cartTotal, clearCart, isLoaded } = useCart();
   const { isLoggedIn, userEmail } = useAuth();
 
-  // Form State
+  // Form State - Exclusively Cash on Delivery (COD)
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
@@ -44,11 +47,7 @@ export default function CheckoutPage() {
     giftFrom: '',
     giftMessage: '',
     specialInstructions: '',
-    paymentMethod: 'card', // 'card' | 'cod' | 'transfer'
-    cardNumber: '',
-    cardName: '',
-    cardExpiry: '',
-    cardCvc: '',
+    paymentMethod: 'cod', // Exclusively Cash on Delivery
   });
 
   // Promo Code State
@@ -60,12 +59,12 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  // Redirect to /shop with empty cart alert if cart has 0 items
+  // Redirect to /shop with empty cart alert only after cart is verified loaded
   useEffect(() => {
-    if (cartItems.length === 0 && !isSubmitting) {
+    if (isLoaded && cartItems.length === 0 && !isSubmitting) {
       router.push('/shop?alert=empty-cart');
     }
-  }, [cartItems.length, isSubmitting, router]);
+  }, [isLoaded, cartItems.length, isSubmitting, router]);
 
   // Set default delivery date to tomorrow
   useEffect(() => {
@@ -132,6 +131,22 @@ export default function CheckoutPage() {
     }
   };
 
+  const handleQuickFillDemo = () => {
+    setFormData(prev => ({
+      ...prev,
+      firstName: prev.firstName || 'Pasindu',
+      lastName: prev.lastName || 'Chamikara',
+      email: prev.email || userEmail || 'customer@halobites.com',
+      phone: prev.phone || '+94 77 123 4567',
+      address: prev.address || '42 Main Lotus Road',
+      apartment: prev.apartment || 'Suite 4B',
+      city: prev.city || 'Colombo',
+      postalCode: prev.postalCode || '00700',
+      paymentMethod: 'cod',
+    }));
+    setErrors({});
+  };
+
   const applyPromo = (e: React.FormEvent) => {
     e.preventDefault();
     setPromoError('');
@@ -152,7 +167,7 @@ export default function CheckoutPage() {
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
     if (!formData.email.trim() || !formData.email.includes('@')) {
-      newErrors.email = 'Valid email is required.';
+      newErrors.email = 'Valid email is required (e.g. name@domain.com).';
     }
     if (!formData.phone.trim()) {
       newErrors.phone = 'Contact phone number is required.';
@@ -170,27 +185,26 @@ export default function CheckoutPage() {
       newErrors.city = 'City is required.';
     }
 
-    if (formData.paymentMethod === 'card') {
-      if (!formData.cardNumber.trim() || formData.cardNumber.replace(/\s/g, '').length < 13) {
-        newErrors.cardNumber = 'Valid card number is required.';
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      const firstField = Object.keys(newErrors)[0];
+      const el = document.querySelector(`[name="${firstField}"]`) as HTMLElement;
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.focus();
+      } else {
+        window.scrollTo({ top: 120, behavior: 'smooth' });
       }
-      if (!formData.cardExpiry.trim()) {
-        newErrors.cardExpiry = 'Expiry date (MM/YY) is required.';
-      }
-      if (!formData.cardCvc.trim() || formData.cardCvc.length < 3) {
-        newErrors.cardCvc = 'Valid CVC code is required.';
-      }
+      return false;
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return true;
   };
 
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
-      // Scroll to top of form
-      window.scrollTo({ top: 120, behavior: 'smooth' });
       return;
     }
 
@@ -232,8 +246,8 @@ export default function CheckoutPage() {
         } : null
       },
       payment: {
-        method: formData.paymentMethod === 'card' ? 'Credit / Debit Card' : (formData.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Direct Bank Transfer'),
-        status: formData.paymentMethod === 'card' ? 'Paid' : 'Pending'
+        method: 'Cash on Delivery (COD)',
+        status: 'Pending'
       },
       items: cartItems.length > 0 ? cartItems : [
         {
@@ -252,45 +266,65 @@ export default function CheckoutPage() {
       rawTotal: Number(calculatedTotalNum || 0)
     };
 
-    setTimeout(() => {
+    try {
+      // 1. Save to user orders list in localStorage
+      const existingUser = localStorage.getItem('halo_bites_user_orders');
+      let userOrderList = [];
+      if (existingUser) {
+        try {
+          userOrderList = JSON.parse(existingUser);
+        } catch {}
+      }
+      userOrderList.unshift(newOrder);
+      localStorage.setItem('halo_bites_user_orders', JSON.stringify(userOrderList));
+      localStorage.setItem('halo_bites_last_order', JSON.stringify(newOrder));
+
+      // 2. Save to admin orders list (in both localStorage and IndexedDB via setPersistentData)
+      const existingAdmin = localStorage.getItem('halo_bites_admin_orders');
+      let adminOrderList = [];
+      if (existingAdmin) {
+        try {
+          adminOrderList = JSON.parse(existingAdmin);
+        } catch {}
+      }
+      adminOrderList.unshift(newOrder);
+      localStorage.setItem('halo_bites_admin_orders', JSON.stringify(adminOrderList));
+      await setPersistentData('halo_bites_admin_orders', adminOrderList);
+
+      // 3. Mirror directly to Cloud Firestore database
       try {
-        // 1. Save to user orders list in localStorage
-        const existingUser = localStorage.getItem('halo_bites_user_orders');
-        let userOrderList = [];
-        if (existingUser) {
-          try {
-            userOrderList = JSON.parse(existingUser);
-          } catch {}
-        }
-        userOrderList.unshift(newOrder);
-        localStorage.setItem('halo_bites_user_orders', JSON.stringify(userOrderList));
-        localStorage.setItem('halo_bites_last_order', JSON.stringify(newOrder));
-
-        // 2. Save to admin orders list (in both localStorage and IndexedDB via setPersistentData)
-        const existingAdmin = localStorage.getItem('halo_bites_admin_orders');
-        let adminOrderList = [];
-        if (existingAdmin) {
-          try {
-            adminOrderList = JSON.parse(existingAdmin);
-          } catch {}
-        }
-        adminOrderList.unshift(newOrder);
-        localStorage.setItem('halo_bites_admin_orders', JSON.stringify(adminOrderList));
-        setPersistentData('halo_bites_admin_orders', adminOrderList);
-
-        // 3. Dispatch global event so Admin dashboard & orders update in real-time
-        window.dispatchEvent(new Event('halo_bites_orders_updated'));
-      } catch (err) {
-        console.error("Storage save failed", err);
+        await setDoc(doc(db, 'orders', orderId), newOrder);
+      } catch (cloudErr) {
+        console.warn('Could not mirror order to Firestore:', cloudErr);
       }
 
-      // Clear the cart
-      clearCart();
+      // 4. Dispatch global event so Admin dashboard & orders update in real-time
+      window.dispatchEvent(new Event('halo_bites_orders_updated'));
+      window.dispatchEvent(new Event('storage'));
+    } catch (err) {
+      console.error("Storage save failed", err);
+    }
 
-      // Redirect to confirmation page
+    // Clear the cart
+    clearCart();
+
+    // Redirect to confirmation page
+    setTimeout(() => {
       router.push(`/order-confirmation?orderId=${orderId}`);
-    }, 1200);
+    }, 600);
   };
+
+  // While cart state is loading from storage
+  if (!isLoaded) {
+    return (
+      <div className="bg-[#FAFAFA] min-h-screen pt-32 pb-24 font-sans text-[#050505] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-[#E91E63] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs uppercase font-bold text-zinc-400 tracking-wider">Preparing checkout...</p>
+        </div>
+      </div>
+    );
+  }
 
   // If cart is empty and not submitting
   if (cartItems.length === 0 && !isSubmitting) {
@@ -322,7 +356,7 @@ export default function CheckoutPage() {
       <div className="container mx-auto px-4 sm:px-8 max-w-7xl">
         
         {/* Navigation / Header */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between">
           <Link 
             href="/cart" 
             className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-black transition-colors"
@@ -330,11 +364,24 @@ export default function CheckoutPage() {
             <ArrowLeft size={16} /> Return to Cart
           </Link>
 
-          <div className="flex items-center gap-2 text-xs font-bold text-zinc-400 uppercase tracking-widest">
+          <div className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest">
             <Lock size={14} className="text-emerald-600" />
-            <span>256-bit Encrypted Checkout</span>
+            <span>Cash on Delivery (No Card Needed)</span>
           </div>
         </div>
+
+        {/* Global Error Banner if validation failed */}
+        {Object.keys(errors).length > 0 && (
+          <div className="mb-6 p-4 bg-red-50 border-2 border-red-500 text-red-900 flex items-start gap-3 animate-in fade-in-50">
+            <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h4 className="font-bold text-sm">Please complete the required delivery information:</h4>
+              <p className="text-xs mt-1 text-red-700 leading-relaxed">
+                {Object.values(errors).join(' • ')}
+              </p>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handlePlaceOrder} noValidate>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
@@ -342,6 +389,21 @@ export default function CheckoutPage() {
             {/* Left Column: Checkout Form (7 Cols) */}
             <div className="lg:col-span-7 space-y-8">
               
+              {/* Quick Fill Testing Helper Bar */}
+              <div className="bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200/80 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs text-zinc-700">
+                  <Sparkles size={16} className="text-[#E91E63]" />
+                  <span><strong>Testing checkout?</strong> Populate sample delivery details in 1 click:</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleQuickFillDemo}
+                  className="inline-flex items-center justify-center gap-1.5 bg-[#050505] hover:bg-[#E91E63] text-white text-xs font-bold uppercase tracking-wider px-4 py-2 transition-colors self-start sm:self-auto shadow-sm"
+                >
+                  ⚡ Quick Fill Details
+                </button>
+              </div>
+
               {/* Step 1: Contact Information */}
               <div className="bg-white border border-zinc-200 p-6 sm:p-8">
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-zinc-100">
@@ -569,7 +631,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Step 3: Complimentary Handwritten Gift Note */}
+              {/* Complimentary Handwritten Gift Note */}
               <div className="bg-white border border-zinc-200 p-6 sm:p-8">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -640,136 +702,50 @@ export default function CheckoutPage() {
                 )}
               </div>
 
-              {/* Step 4: Payment Method */}
+              {/* Step 3: Payment Method - Exclusively Cash on Delivery */}
               <div className="bg-white border border-zinc-200 p-6 sm:p-8">
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-zinc-100">
                   <div className="flex items-center gap-3">
                     <span className="w-6 h-6 bg-black text-white text-xs font-black flex items-center justify-center">3</span>
                     <h2 className="text-lg font-black uppercase tracking-tight">Payment Method</h2>
                   </div>
-                  <span className="text-xs text-zinc-400">All transactions are secure</span>
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 flex items-center gap-1.5">
+                    <CheckCircle2 size={13} /> Cash on Delivery
+                  </span>
                 </div>
 
-                {/* Payment Options */}
-                <div className="space-y-3 mb-6">
-                  {/* Card Option */}
-                  <label className={`flex items-center justify-between p-4 border cursor-pointer transition-colors ${formData.paymentMethod === 'card' ? 'border-black bg-zinc-50' : 'border-zinc-200 hover:border-zinc-300'}`}>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="card"
-                        checked={formData.paymentMethod === 'card'}
-                        onChange={handleInputChange}
-                        className="text-black focus:ring-black"
-                      />
-                      <CreditCard size={18} className="text-zinc-700" />
-                      <div>
-                        <span className="text-sm font-bold block text-zinc-900">Credit or Debit Card</span>
-                        <span className="text-xs text-zinc-500">Visa, Mastercard, Amex</span>
+                {/* Cash on Delivery Feature Card */}
+                <div className="p-5 border-2 border-zinc-950 bg-zinc-50 relative">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-black text-white flex items-center justify-center flex-shrink-0">
+                      <Banknote size={24} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                        <h3 className="text-sm font-black uppercase tracking-wider text-zinc-900">
+                          Cash on Delivery (COD)
+                        </h3>
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest bg-emerald-600 text-white px-2 py-0.5">
+                          100% Free • No Advance Required
+                        </span>
                       </div>
-                    </div>
-                    <div className="flex gap-1.5 text-[10px] font-bold text-zinc-400">
-                      <span className="px-1.5 py-0.5 border border-zinc-200 bg-white">VISA</span>
-                      <span className="px-1.5 py-0.5 border border-zinc-200 bg-white">MC</span>
-                    </div>
-                  </label>
+                      <p className="text-xs text-zinc-600 leading-relaxed mb-3">
+                        Pay with cash when your fresh bakery box arrives at your doorstep. Please have the exact payment amount ready for the rider.
+                      </p>
 
-                  {/* Cash on Delivery Option */}
-                  <label className={`flex items-center justify-between p-4 border cursor-pointer transition-colors ${formData.paymentMethod === 'cod' ? 'border-black bg-zinc-50' : 'border-zinc-200 hover:border-zinc-300'}`}>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="cod"
-                        checked={formData.paymentMethod === 'cod'}
-                        onChange={handleInputChange}
-                        className="text-black focus:ring-black"
-                      />
-                      <Banknote size={18} className="text-zinc-700" />
-                      <div>
-                        <span className="text-sm font-bold block text-zinc-900">Cash on Delivery (COD)</span>
-                        <span className="text-xs text-zinc-500">Pay in cash when your treats arrive</span>
-                      </div>
-                    </div>
-                    <span className="text-xs font-bold text-zinc-500">Available</span>
-                  </label>
-
-                  {/* Bank Transfer Option */}
-                  <label className={`flex items-center justify-between p-4 border cursor-pointer transition-colors ${formData.paymentMethod === 'transfer' ? 'border-black bg-zinc-50' : 'border-zinc-200 hover:border-zinc-300'}`}>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="transfer"
-                        checked={formData.paymentMethod === 'transfer'}
-                        onChange={handleInputChange}
-                        className="text-black focus:ring-black"
-                      />
-                      <Building2 size={18} className="text-zinc-700" />
-                      <div>
-                        <span className="text-sm font-bold block text-zinc-900">Direct Bank Transfer</span>
-                        <span className="text-xs text-zinc-500">Transfer slip upload after placement</span>
-                      </div>
-                    </div>
-                    <span className="text-xs font-bold text-zinc-500">Fast Verification</span>
-                  </label>
-                </div>
-
-                {/* Card Fields (If Card Selected) */}
-                {formData.paymentMethod === 'card' && (
-                  <div className="space-y-4 p-4 bg-zinc-50 border border-zinc-200 animate-in fade-in-50 duration-200">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-1.5">
-                        Card Number *
-                      </label>
-                      <input
-                        type="text"
-                        name="cardNumber"
-                        placeholder="4532 •••• •••• 8892"
-                        maxLength={19}
-                        value={formData.cardNumber}
-                        onChange={handleInputChange}
-                        className={`w-full bg-white border ${errors.cardNumber ? 'border-red-500' : 'border-zinc-200'} p-3 text-sm focus:outline-none focus:border-black font-mono`}
-                      />
-                      {errors.cardNumber && <p className="text-xs text-red-500 mt-1">{errors.cardNumber}</p>}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-1.5">
-                          Expiration (MM/YY) *
-                        </label>
-                        <input
-                          type="text"
-                          name="cardExpiry"
-                          placeholder="08/28"
-                          maxLength={5}
-                          value={formData.cardExpiry}
-                          onChange={handleInputChange}
-                          className={`w-full bg-white border ${errors.cardExpiry ? 'border-red-500' : 'border-zinc-200'} p-3 text-sm focus:outline-none focus:border-black font-mono`}
-                        />
-                        {errors.cardExpiry && <p className="text-xs text-red-500 mt-1">{errors.cardExpiry}</p>}
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-1.5">
-                          Security Code (CVC) *
-                        </label>
-                        <input
-                          type="password"
-                          name="cardCvc"
-                          placeholder="•••"
-                          maxLength={4}
-                          value={formData.cardCvc}
-                          onChange={handleInputChange}
-                          className={`w-full bg-white border ${errors.cardCvc ? 'border-red-500' : 'border-zinc-200'} p-3 text-sm focus:outline-none focus:border-black font-mono`}
-                        />
-                        {errors.cardCvc && <p className="text-xs text-red-500 mt-1">{errors.cardCvc}</p>}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-semibold text-zinc-600 pt-3 border-t border-zinc-200">
+                        <div className="flex items-center gap-2">
+                          <Check size={14} className="text-emerald-600" />
+                          <span>Inspect package before paying</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Check size={14} className="text-emerald-600" />
+                          <span>No credit card or bank transfer required</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
 
             </div>
@@ -886,8 +862,8 @@ export default function CheckoutPage() {
                   )}
 
                   <div className="flex justify-between text-zinc-600">
-                    <span>Estimated Taxes</span>
-                    <span className="text-zinc-400">Included in price</span>
+                    <span>Payment Method</span>
+                    <span className="font-bold text-emerald-700">Cash on Delivery</span>
                   </div>
                 </div>
 
@@ -895,23 +871,36 @@ export default function CheckoutPage() {
                 <div className="flex justify-between items-baseline mb-6 pt-4 border-t border-zinc-200">
                   <div>
                     <span className="text-xs font-bold uppercase tracking-widest text-zinc-400 block">Total Due</span>
-                    <span className="text-xs text-zinc-500 font-medium">LKR Currency</span>
+                    <span className="text-xs text-zinc-500 font-medium">Pay Upon Delivery</span>
                   </div>
                   <span className="text-3xl font-black text-[#E91E63]">
                     Rs. {finalTotal.toFixed(2)}
                   </span>
                 </div>
 
+                {/* Validation Reminder Warning Above Button */}
+                {Object.keys(errors).length > 0 && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-300 text-red-700 text-xs animate-in fade-in-50">
+                    <div className="flex items-center gap-1.5 font-bold mb-1">
+                      <AlertCircle size={14} className="text-red-600" />
+                      <span>Missing Information</span>
+                    </div>
+                    <p className="text-[11px] text-red-600">
+                      Please fill out the highlighted fields on the left before completing order.
+                    </p>
+                  </div>
+                )}
+
                 {/* Submit Order Button */}
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-[#050505] text-white py-4 text-xs font-black uppercase tracking-widest hover:bg-[#E91E63] disabled:bg-zinc-400 transition-colors shadow-lg shadow-black/10 flex items-center justify-center gap-2"
+                  className="w-full bg-[#050505] text-white py-4 text-xs font-black uppercase tracking-widest hover:bg-[#E91E63] disabled:bg-zinc-400 transition-colors shadow-lg shadow-black/10 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Confirming Your Order...</span>
+                      <span>Placing Your Order...</span>
                     </>
                   ) : (
                     <span>Complete Order • Rs. {finalTotal.toFixed(2)}</span>

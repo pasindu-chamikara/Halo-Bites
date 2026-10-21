@@ -20,6 +20,8 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { getPersistentData, setPersistentData, isTestOrder } from '@/utils/storage';
+import { db } from '@/config/firebase';
+import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 
 export interface OrderItem {
   id?: number | string;
@@ -131,11 +133,40 @@ export default function AdminOrders() {
         });
       }
 
+      // 3. Query Cloud Firestore orders so orders placed from any device or browser are synchronized
+      try {
+        const snap = await getDocs(collection(db, 'orders'));
+        if (!snap.empty) {
+          snap.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data && data.id && !isTestOrder(data)) {
+              const formattedTotal = typeof data.total === 'string'
+                ? data.total
+                : `Rs. ${Number(data.total || 0).toFixed(2)}`;
+
+              combinedMap.set(data.id, {
+                id: data.id,
+                customer: data.customer || 'Customer',
+                customerDetails: data.customerDetails || {},
+                delivery: data.delivery,
+                payment: data.payment,
+                date: data.date || 'Recent',
+                total: formattedTotal,
+                rawTotal: typeof data.total === 'number' ? data.total : parseFloat(formattedTotal.replace(/[^0-9.]/g, '')) || 0,
+                status: (data.status as AdminOrder['status']) || 'Processing',
+                items: data.items || []
+              });
+            }
+          });
+        }
+      } catch (cloudErr) {
+        // Fallback to local
+      }
+
       const mergedList = Array.from(combinedMap.values());
       setOrders(mergedList);
       // Keep persistent storage clean without mock orders
       await setPersistentData('halo_bites_admin_orders', mergedList);
-      localStorage.setItem('halo_bites_admin_orders', JSON.stringify(mergedList));
       localStorage.setItem('halo_bites_admin_orders', JSON.stringify(mergedList));
     } catch (e) {
       console.error('Failed to load orders', e);
@@ -177,6 +208,13 @@ export default function AdminOrders() {
           const updatedUser = userOrders.map((uo: any) => uo.id === orderId ? { ...uo, status: newStatus } : uo);
           localStorage.setItem('halo_bites_user_orders', JSON.stringify(updatedUser));
         } catch {}
+      }
+
+      // Mirror status update to Firestore
+      try {
+        await setDoc(doc(db, 'orders', orderId), { status: newStatus }, { merge: true });
+      } catch (cloudErr) {
+        console.warn('Could not mirror order status update to Firestore', cloudErr);
       }
 
       window.dispatchEvent(new Event('halo_bites_orders_updated'));

@@ -6,6 +6,7 @@ import {
   compressImageFile, 
   getStoredCategoriesAsync, 
   saveStoredCategories, 
+  deleteStoredCategory,
   getStoredProductsAsync 
 } from '@/utils/storage';
 import { DEFAULT_CATEGORIES, CategoryItem } from '@/data/catalog';
@@ -98,6 +99,7 @@ export default function CategoriesPage() {
     if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
       const filtered = categories.filter((c) => c.id !== id);
       saveCategories(filtered);
+      deleteStoredCategory(id);
     }
   };
 

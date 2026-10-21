@@ -12,6 +12,7 @@ import {
   getStoredProductsAsync,
   saveStoredProducts,
   saveStoredCategories,
+  deleteStoredProduct,
   purgeAllTestDataFromBrowser
 } from '@/utils/storage';
 import { DEFAULT_CATEGORIES as CATALOG_CATEGORIES, DEFAULT_PRODUCTS } from '@/data/catalog';
@@ -135,6 +136,7 @@ export default function AdminProducts() {
       setProducts(prev => {
         const updated = prev.filter(p => String(p.id) !== String(id));
         saveStoredProducts(updated as any);
+        deleteStoredProduct(id);
         return updated;
       });
     }

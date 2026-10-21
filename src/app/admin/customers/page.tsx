@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Download, Filter, MoreVertical, Mail, Phone } from 'lucide-react';
-import { getPersistentData, isTestOrder } from '@/utils/storage';
+import { getStoredOrdersAsync, isTestOrder } from '@/utils/storage';
 
 interface CustomerItem {
   id: string;
@@ -21,25 +21,8 @@ export default function CustomersPage() {
 
   const loadCustomers = async () => {
     try {
-      // 1. Gather all real orders from admin and user storage
-      let adminOrders = await getPersistentData<any[]>('halo_bites_admin_orders');
-      if (!adminOrders) {
-        const local = localStorage.getItem('halo_bites_admin_orders');
-        if (local) {
-          try { adminOrders = JSON.parse(local); } catch {}
-        }
-      }
-
-      let userOrders: any[] = [];
-      const localUser = localStorage.getItem('halo_bites_user_orders');
-      if (localUser) {
-        try { userOrders = JSON.parse(localUser); } catch {}
-      }
-
-      // Filter out ANY test orders
-      const cleanAdmin = (adminOrders || []).filter(o => !isTestOrder(o));
-      const cleanUser = (userOrders || []).filter(o => !isTestOrder(o));
-      const allOrders = [...cleanAdmin, ...cleanUser];
+      // 1. Gather all real orders from Cloud Firestore, admin, and user storage
+      const allOrders = await getStoredOrdersAsync();
 
       // Map customers strictly by email or name from real placed orders
       const customerMap = new Map<string, CustomerItem>();

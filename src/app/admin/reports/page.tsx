@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowUpRight, TrendingUp, BarChart3, PieChart, ShoppingBag, Package } from 'lucide-react';
-import { getPersistentData, getStoredProductsAsync, isTestOrder } from '@/utils/storage';
+import { getStoredProductsAsync, getStoredOrdersAsync, isTestOrder } from '@/utils/storage';
 
 export default function ReportsPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -12,29 +12,7 @@ export default function ReportsPage() {
   useEffect(() => {
     const loadReportsData = async () => {
       try {
-        let adminOrders = await getPersistentData<any[]>('halo_bites_admin_orders');
-        if (!adminOrders) {
-          const local = localStorage.getItem('halo_bites_admin_orders');
-          if (local) {
-            try { adminOrders = JSON.parse(local); } catch {}
-          }
-        }
-
-        let userOrders: any[] = [];
-        const localUser = localStorage.getItem('halo_bites_user_orders');
-        if (localUser) {
-          try { userOrders = JSON.parse(localUser); } catch {}
-        }
-
-        const combinedMap = new Map<string, any>();
-        if (adminOrders && Array.isArray(adminOrders)) {
-          adminOrders.forEach(o => { if (o && o.id && !isTestOrder(o)) combinedMap.set(o.id, o); });
-        }
-        if (userOrders && Array.isArray(userOrders)) {
-          userOrders.forEach(o => { if (o && o.id && !isTestOrder(o)) combinedMap.set(o.id, o); });
-        }
-
-        const allOrders = Array.from(combinedMap.values());
+        const allOrders = await getStoredOrdersAsync();
         setOrders(allOrders);
 
         // Aggregate product sales from real orders

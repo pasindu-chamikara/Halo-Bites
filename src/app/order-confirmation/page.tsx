@@ -11,6 +11,7 @@ import {
   MapPin, 
   Gift, 
   CreditCard, 
+  Banknote,
   ArrowRight, 
   Printer, 
   Sparkles,
@@ -126,8 +127,8 @@ function OrderConfirmationContent() {
         }
       },
       payment: {
-        method: 'Credit / Debit Card',
-        status: 'Paid'
+        method: 'Cash on Delivery (COD)',
+        status: 'Pending (Pay on Delivery)'
       },
       items: [
         {
@@ -380,15 +381,22 @@ function OrderConfirmationContent() {
             {/* Payment Method */}
             <div className="bg-white border border-zinc-200 p-6">
               <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-3 flex items-center gap-1.5">
-                <CreditCard size={14} className="text-[#E91E63]" /> Payment Details
+                {order.payment.method?.toLowerCase().includes('cash') || order.payment.method?.toLowerCase().includes('cod') ? (
+                  <Banknote size={15} className="text-emerald-600" />
+                ) : (
+                  <CreditCard size={15} className="text-[#E91E63]" />
+                )}
+                Payment Details
               </h3>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-bold text-sm text-zinc-900">{order.payment.method}</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">Status: <span className="font-bold text-emerald-600">{order.payment.status}</span></p>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Status: <span className="font-bold text-emerald-600">{order.payment.status}</span>
+                  </p>
                 </div>
-                <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-1 border border-emerald-200">
-                  VERIFIED
+                <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 border border-emerald-200 uppercase tracking-wider">
+                  {order.payment.method?.toLowerCase().includes('cash') || order.payment.method?.toLowerCase().includes('cod') ? 'Pay On Delivery' : 'Verified'}
                 </span>
               </div>
             </div>

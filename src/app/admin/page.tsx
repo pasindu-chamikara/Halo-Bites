@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowUpRight, ArrowDownRight, Package, Clock, DollarSign, Users, ShoppingBag, Trash2, CheckCircle2, ShieldCheck, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { getPersistentData, getStoredProductsAsync, isTestOrder, purgeAllTestDataFromBrowser } from '@/utils/storage';
+import { getPersistentData, getStoredProductsAsync, getStoredOrdersAsync, isTestOrder, purgeAllTestDataFromBrowser } from '@/utils/storage';
 import { DEFAULT_PRODUCTS } from '@/data/catalog';
 
 export default function AdminOverview() {
@@ -20,55 +20,27 @@ export default function AdminOverview() {
         await purgeAllTestDataFromBrowser();
       }
 
-      // 2. Load Admin Orders
-      let adminOrders = await getPersistentData<any[]>('halo_bites_admin_orders');
-      if (!adminOrders) {
-        const local = localStorage.getItem('halo_bites_admin_orders');
-        if (local) {
-          try { adminOrders = JSON.parse(local); } catch {}
-        }
-      }
+      // 2. Load all real orders from Cloud Firestore and local storage
+      const rawOrders = await getStoredOrdersAsync();
+      const allRealOrders = rawOrders.map(o => {
+        const customerName = typeof o.customer === 'string'
+          ? o.customer
+          : `${o.customer?.firstName || ''} ${o.customer?.lastName || ''}`.trim() || 'Customer';
 
-      // 3. Also check user orders from checkout to guarantee no real orders are missed
-      let userOrders: any[] = [];
-      const localUser = localStorage.getItem('halo_bites_user_orders');
-      if (localUser) {
-        try { userOrders = JSON.parse(localUser); } catch {}
-      }
+        const formattedTotal = typeof o.total === 'string'
+          ? o.total
+          : `Rs. ${Number(o.total || 0).toFixed(2)}`;
 
-      // Collect ONLY real customer orders (strictly exclude test orders)
-      const combinedMap = new Map<string, any>();
+        return {
+          id: o.id,
+          customer: customerName,
+          date: o.date || 'Recent',
+          total: formattedTotal,
+          rawTotal: typeof o.total === 'number' ? o.total : (parseFloat(formattedTotal.replace(/[^0-9.]/g, '')) || 0),
+          status: o.status || 'Processing'
+        };
+      });
 
-      if (adminOrders && Array.isArray(adminOrders)) {
-        adminOrders.forEach(o => {
-          if (!o || !o.id || isTestOrder(o)) return;
-          combinedMap.set(o.id, o);
-        });
-      }
-
-      if (userOrders && Array.isArray(userOrders)) {
-        userOrders.forEach(o => {
-          if (!o || !o.id || isTestOrder(o)) return;
-          const customerName = typeof o.customer === 'string'
-            ? o.customer
-            : `${o.customer?.firstName || ''} ${o.customer?.lastName || ''}`.trim() || 'Customer';
-
-          const formattedTotal = typeof o.total === 'string'
-            ? o.total
-            : `Rs. ${Number(o.total || 0).toFixed(2)}`;
-
-          combinedMap.set(o.id, {
-            id: o.id,
-            customer: customerName,
-            date: o.date || 'Recent',
-            total: formattedTotal,
-            rawTotal: typeof o.total === 'number' ? o.total : (parseFloat(formattedTotal.replace(/[^0-9.]/g, '')) || 0),
-            status: o.status || 'Processing'
-          });
-        });
-      }
-
-      const allRealOrders = Array.from(combinedMap.values());
       setOrders(allRealOrders);
 
       // Compute Total Revenue strictly from real placed orders
