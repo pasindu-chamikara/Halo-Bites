@@ -194,3 +194,169 @@ export function freeLocalStorageQuota(): void {
     console.warn('Error freeing quota:', err);
   }
 }
+
+import { DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, CategoryItem, ProductItem } from '@/data/catalog';
+
+export const TEST_ORDER_IDS = ['ORD-1001', 'ORD-1002', 'ORD-1003', 'ORD-1004', 'ORD-1005', 'ORD-1006', 'ORD-98234-A', 'ORD-87122-B', 'ORD-75611-C'];
+export const TEST_CUSTOMERS = ['Jane Doe', 'John Smith', 'Alice Johnson', 'Bob Brown', 'Charlie Davis', 'Eva Green'];
+
+export function isTestOrder(order: any): boolean {
+  if (!order) return true;
+  const id = String(order.id || '');
+  if (TEST_ORDER_IDS.includes(id) || id.startsWith('ORD-100')) return true;
+  const cust = typeof order.customer === 'string'
+    ? order.customer
+    : `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim();
+  if (TEST_CUSTOMERS.some(c => c.toLowerCase() === cust.toLowerCase())) return true;
+  const email = (order.customerDetails?.email || order.customer?.email || '').toLowerCase();
+  if (email.includes('example.com') || email.includes('test.com')) return true;
+  return false;
+}
+
+/**
+ * Permanently purge test orders and mock discounts from client storage
+ * Preserves all products and categories.
+ */
+export async function purgeAllTestDataFromBrowser(): Promise<{
+  purgedOrders: number;
+  purgedDiscounts: number;
+}> {
+  if (typeof window === 'undefined') {
+    return { purgedOrders: 0, purgedDiscounts: 0 };
+  }
+
+  let purgedOrders = 0;
+  let purgedDiscounts = 0;
+
+  try {
+    // 1. Purge Mock Orders from admin & user storage (Jane Doe, John Smith, etc.)
+    const rawAdminOrders = await getPersistentData<any[]>('halo_bites_admin_orders') || 
+      JSON.parse(localStorage.getItem('halo_bites_admin_orders') || '[]');
+    if (Array.isArray(rawAdminOrders)) {
+      const realAdminOrders = rawAdminOrders.filter(o => !isTestOrder(o));
+      purgedOrders += (rawAdminOrders.length - realAdminOrders.length);
+      await setPersistentData('halo_bites_admin_orders', realAdminOrders);
+      localStorage.setItem('halo_bites_admin_orders', JSON.stringify(realAdminOrders));
+    }
+
+    const rawUserOrders = JSON.parse(localStorage.getItem('halo_bites_user_orders') || '[]');
+    if (Array.isArray(rawUserOrders)) {
+      const realUserOrders = rawUserOrders.filter(o => !isTestOrder(o));
+      localStorage.setItem('halo_bites_user_orders', JSON.stringify(realUserOrders));
+    }
+
+    // 2. Purge Mock Discounts
+    const rawDiscounts = await getPersistentData<any[]>('halo_bites_admin_discounts') || 
+      JSON.parse(localStorage.getItem('halo_bites_admin_discounts') || '[]');
+    if (Array.isArray(rawDiscounts)) {
+      const realDiscounts = rawDiscounts.filter(d => !['OFF-1', 'OFF-2', 'OFF-3', 'OFF-4'].includes(d.id));
+      purgedDiscounts += (rawDiscounts.length - realDiscounts.length);
+      await setPersistentData('halo_bites_admin_discounts', realDiscounts);
+      localStorage.setItem('halo_bites_admin_discounts', JSON.stringify(realDiscounts));
+    }
+
+    // 3. Ensure products and categories are populated in storage so Admin Dashboard and Client are in 100% sync
+    let currentProds = await getPersistentData<any[]>('halo_bites_admin_products');
+    if (!currentProds || (Array.isArray(currentProds) && currentProds.length === 0)) {
+      const local = localStorage.getItem('halo_bites_admin_products');
+      if (local) {
+        try { currentProds = JSON.parse(local); } catch {}
+      }
+    }
+    if (!currentProds || (Array.isArray(currentProds) && currentProds.length === 0)) {
+      await setPersistentData('halo_bites_admin_products', DEFAULT_PRODUCTS);
+      localStorage.setItem('halo_bites_admin_products', JSON.stringify(DEFAULT_PRODUCTS));
+    }
+
+    let currentCats = await getPersistentData<any[]>('halo_bites_admin_categories');
+    if (!currentCats || (Array.isArray(currentCats) && currentCats.length === 0)) {
+      const local = localStorage.getItem('halo_bites_admin_categories');
+      if (local) {
+        try { currentCats = JSON.parse(local); } catch {}
+      }
+    }
+    if (!currentCats || (Array.isArray(currentCats) && currentCats.length === 0)) {
+      await setPersistentData('halo_bites_admin_categories', DEFAULT_CATEGORIES);
+      localStorage.setItem('halo_bites_admin_categories', JSON.stringify(DEFAULT_CATEGORIES));
+    }
+
+    localStorage.setItem('halo_bites_test_orders_purged', 'true');
+
+    // Notify all active tabs and components
+    window.dispatchEvent(new Event('halo_bites_orders_updated'));
+    window.dispatchEvent(new Event('halo_bites_products_updated'));
+    window.dispatchEvent(new Event('halo_bites_categories_updated'));
+    window.dispatchEvent(new Event('halo_bites_discounts_updated'));
+    window.dispatchEvent(new Event('storage'));
+  } catch (err) {
+    console.warn('Error during purgeAllTestDataFromBrowser:', err);
+  }
+
+  return { purgedOrders, purgedDiscounts };
+}
+
+export async function getStoredCategoriesAsync(): Promise<CategoryItem[]> {
+  try {
+    let saved = await getPersistentData<CategoryItem[]>('halo_bites_admin_categories');
+    if (!saved && typeof window !== 'undefined') {
+      const local = localStorage.getItem('halo_bites_admin_categories');
+      if (local) {
+        try { saved = JSON.parse(local); } catch {}
+      }
+    }
+    if (saved && Array.isArray(saved) && saved.length > 0) {
+      return saved;
+    }
+  } catch (err) {
+    console.warn('Error reading stored categories:', err);
+  }
+
+  // If storage was empty, initialize storage with DEFAULT_CATEGORIES so admin and storefront stay in sync
+  if (typeof window !== 'undefined' && DEFAULT_CATEGORIES.length > 0) {
+    saveStoredCategories(DEFAULT_CATEGORIES).catch(() => {});
+  }
+  return DEFAULT_CATEGORIES;
+}
+
+export async function saveStoredCategories(categories: CategoryItem[]): Promise<void> {
+  await setPersistentData('halo_bites_admin_categories', categories);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('halo_bites_admin_categories', JSON.stringify(categories));
+    window.dispatchEvent(new Event('halo_bites_categories_updated'));
+    window.dispatchEvent(new Event('storage'));
+  }
+}
+
+export async function getStoredProductsAsync(): Promise<ProductItem[]> {
+  try {
+    let prods: ProductItem[] | null = await getPersistentData<ProductItem[]>('halo_bites_admin_products');
+    if (!prods && typeof window !== 'undefined') {
+      const local = localStorage.getItem('halo_bites_admin_products');
+      if (local) {
+        try { prods = JSON.parse(local); } catch {}
+      }
+    }
+
+    if (prods && Array.isArray(prods) && prods.length > 0) {
+      return prods;
+    }
+  } catch (err) {
+    console.warn('Error reading stored products:', err);
+  }
+
+  // If storage was empty, initialize storage with DEFAULT_PRODUCTS so admin and storefront stay in sync
+  if (typeof window !== 'undefined' && DEFAULT_PRODUCTS.length > 0) {
+    saveStoredProducts(DEFAULT_PRODUCTS).catch(() => {});
+  }
+  return DEFAULT_PRODUCTS;
+}
+
+export async function saveStoredProducts(products: ProductItem[]): Promise<void> {
+  await setPersistentData('halo_bites_admin_products', products);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('halo_bites_admin_products', JSON.stringify(products));
+    window.dispatchEvent(new Event('halo_bites_products_updated'));
+    window.dispatchEvent(new Event('storage'));
+  }
+}
+

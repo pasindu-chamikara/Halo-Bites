@@ -166,7 +166,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="p-4 border-t border-white/10 bg-black/40">
           <div className="mb-3 px-2">
             <span className="text-[10px] uppercase font-bold text-zinc-500 block">Logged In Staff</span>
-            <span className="text-xs font-bold text-white truncate block">{userEmail || 'admin@halobites.com'}</span>
+            <span className="text-xs font-bold text-white truncate block">{userEmail || 'adminsuper@halobites.com'}</span>
           </div>
           <button 
             onClick={handleLogout} 

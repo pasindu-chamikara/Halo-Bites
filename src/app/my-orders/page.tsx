@@ -30,51 +30,19 @@ const parsePrice = (val: any): number => {
   return 0;
 };
 
-const DEFAULT_ORDERS: OrderRecord[] = [
-  {
-    id: "ORD-98234-A",
-    date: "Oct 15, 2026",
-    status: "Processing",
-    total: 75.00,
-    items: [
-      { name: "Strawberry Dream Box", quantity: 1, image: "/hero1.png" },
-      { name: "Classic Chocolate Explosion", quantity: 1, image: "/hero2.png" }
-    ]
-  },
-  {
-    id: "ORD-87122-B",
-    date: "Sep 22, 2026",
-    status: "Delivered",
-    total: 45.00,
-    items: [
-      { name: "Red Velvet Romance", quantity: 1, image: "/hero4.png" }
-    ]
-  },
-  {
-    id: "ORD-75611-C",
-    date: "Aug 05, 2026",
-    status: "Delivered",
-    total: 114.00,
-    items: [
-      { name: "Vanilla Funfetti Surprise", quantity: 2, image: "/hero3.png" },
-      { name: "Mother's Day Special", quantity: 1, image: "/hero6.png" }
-    ]
-  }
-];
+import { isTestOrder } from '@/utils/storage';
 
 export default function MyOrdersPage() {
-  const [orders, setOrders] = useState<OrderRecord[]>(DEFAULT_ORDERS);
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem('halo_bites_user_orders');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge newly placed orders before the default demo orders
-          const existingIds = new Set(parsed.map(o => o.id));
-          const remainingDefault = DEFAULT_ORDERS.filter(o => !existingIds.has(o.id));
-          setOrders([...parsed, ...remainingDefault]);
+        if (Array.isArray(parsed)) {
+          const realOrders = parsed.filter(o => !isTestOrder(o));
+          setOrders(realOrders);
         }
       }
     } catch (e) {

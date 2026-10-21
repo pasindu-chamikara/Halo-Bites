@@ -38,10 +38,10 @@ export default function AdminLoginPage() {
       return;
     }
 
-    // Role-based validation: supports all authorized staff accounts
+    // Role-based validation: adminsuper@halobites.com is the ONLY super admin
+    const isSuperAdmin = normalizedEmail === 'adminsuper@halobites.com';
     const isStaff = 
-      normalizedEmail.startsWith('adminsuper@') ||
-      normalizedEmail.startsWith('admin@') ||
+      isSuperAdmin ||
       normalizedEmail.startsWith('manager@') ||
       normalizedEmail.startsWith('order@') ||
       normalizedEmail.startsWith('orders@') ||
@@ -52,7 +52,7 @@ export default function AdminLoginPage() {
 
     if (!isStaff) {
       setErrorMsg(
-        'Access denied: This portal is strictly for authorized Halo Bites staff & Super Admins (e.g. adminsuper@, manager@, inventory@, or kitchen@halobites.com).'
+        'Access denied: This portal is strictly for authorized Halo Bites staff & Super Admin (adminsuper@halobites.com).'
       );
       return;
     }
@@ -73,12 +73,6 @@ export default function AdminLoginPage() {
         }
       }, 1000);
     }, 600);
-  };
-
-  const handleFillDemo = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword('Staff@Halo2026!');
-    setErrorMsg('');
   };
 
   return (
@@ -118,43 +112,6 @@ export default function AdminLoginPage() {
             <p className="text-xs uppercase tracking-widest font-bold text-zinc-400">
               Super Admin Portal
             </p>
-          </div>
-
-          {/* Demo Quick-Fill Roles */}
-          <div className="mb-6 p-3 bg-white/5 border border-white/10 text-xs">
-            <span className="text-zinc-400 block text-[10px] uppercase font-bold tracking-wider mb-2">
-              Autofill RBAC Demo Credentials
-            </span>
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleFillDemo('adminsuper@halobites.com')}
-                className="p-1.5 bg-[#E91E63]/15 hover:bg-[#E91E63] text-[#E91E63] hover:text-white border border-[#E91E63]/30 text-[10px] font-bold uppercase tracking-wider text-left transition-colors truncate"
-              >
-                ★ Super Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('manager@halobites.com')}
-                className="p-1.5 bg-blue-500/15 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 text-[10px] font-bold uppercase tracking-wider text-left transition-colors truncate"
-              >
-                📦 Order Manager
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('inventory@halobites.com')}
-                className="p-1.5 bg-emerald-500/15 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 text-[10px] font-bold uppercase tracking-wider text-left transition-colors truncate"
-              >
-                🏷️ Inventory Mgr
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('kitchen@halobites.com')}
-                className="p-1.5 bg-amber-500/15 hover:bg-amber-600 text-amber-400 hover:text-white border border-amber-500/30 text-[10px] font-bold uppercase tracking-wider text-left transition-colors truncate"
-              >
-                👨‍🍳 Kitchen Staff
-              </button>
-            </div>
           </div>
 
           {/* Success State */}

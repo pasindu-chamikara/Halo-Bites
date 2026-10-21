@@ -2,51 +2,11 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Quote } from "lucide-react";
-
-interface CategoryItem {
-  id: string;
-  name: string;
-  count?: number;
-  status?: string;
-  description?: string;
-  image?: string;
-}
-
-const DEFAULT_CATEGORIES: CategoryItem[] = [
-  {
-    id: 'CAT-1',
-    name: 'Signature Cakes',
-    count: 12,
-    status: 'Active',
-    description: 'Our premium custom cakes for all occasions.',
-    image: '/hero1.png'
-  },
-  {
-    id: 'CAT-2',
-    name: 'Donuts',
-    count: 24,
-    status: 'Active',
-    description: 'Freshly baked classic and artisanal donuts.',
-    image: '/hero2.png'
-  },
-  {
-    id: 'CAT-3',
-    name: 'Macarons',
-    count: 8,
-    status: 'Active',
-    description: 'Delicate French macarons in various flavors.',
-    image: '/hero3.png'
-  },
-  {
-    id: 'CAT-4',
-    name: 'Pastries',
-    count: 15,
-    status: 'Active',
-    description: 'Flaky and buttery morning pastries.',
-    image: '/hero4.png'
-  },
-];
+import { ArrowLeft, ArrowRight, Quote, ShoppingBag } from "lucide-react";
+import { DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, CategoryItem, ProductItem } from "@/data/catalog";
+import { getStoredCategoriesAsync, getStoredProductsAsync } from "@/utils/storage";
+import ProductCard from "@/components/product/ProductCard";
+import { useCart } from "@/context/CartContext";
 
 const TESTIMONIALS = [
   {
@@ -126,6 +86,8 @@ const TESTIMONIALS = [
 export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [categories, setCategories] = useState<CategoryItem[]>(DEFAULT_CATEGORIES);
+  const [products, setProducts] = useState<ProductItem[]>(DEFAULT_PRODUCTS);
+  const { addToCart } = useCart();
   const categoryScrollRef = useRef<HTMLDivElement>(null);
 
   // Testimonials Carousel State
@@ -160,18 +122,36 @@ export default function Home() {
   };
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('halo_bites_admin_categories');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const activeOnly = parsed.filter(cat => cat.status !== 'Draft');
-          setCategories(activeOnly.length > 0 ? activeOnly : parsed);
+    const loadHomeData = async () => {
+      try {
+        const [cats, prods] = await Promise.all([
+          getStoredCategoriesAsync(),
+          getStoredProductsAsync()
+        ]);
+        if (cats && Array.isArray(cats)) {
+          const activeOnly = cats.filter(cat => cat.status !== 'Draft');
+          setCategories(activeOnly);
         }
+        if (prods && Array.isArray(prods)) {
+          const activeProds = prods.filter(prod => prod.status !== 'Draft');
+          setProducts(activeProds);
+        }
+      } catch (err) {
+        console.warn('Error loading home data:', err);
       }
-    } catch {
-      // ignore
-    }
+    };
+
+    loadHomeData();
+
+    window.addEventListener('storage', loadHomeData);
+    window.addEventListener('halo_bites_categories_updated', loadHomeData);
+    window.addEventListener('halo_bites_products_updated', loadHomeData);
+
+    return () => {
+      window.removeEventListener('storage', loadHomeData);
+      window.removeEventListener('halo_bites_categories_updated', loadHomeData);
+      window.removeEventListener('halo_bites_products_updated', loadHomeData);
+    };
   }, []);
 
   const scrollCategories = (direction: 'left' | 'right') => {
@@ -376,6 +356,58 @@ export default function Home() {
               </div>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* Featured Sweet Creations Section */}
+      <section className="container mx-auto px-4 sm:px-8 max-w-7xl py-12 border-t border-zinc-100">
+        <div className="flex flex-col sm:flex-row items-center justify-between mb-8">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#E91E63] mb-1">
+              <span>Fresh From The Bakery</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-black">Featured Sweet Creations</h2>
+            <p className="text-zinc-500 text-sm mt-1">Discover our latest handcrafted cakes, surprise explosion boxes, and artisan bites</p>
+          </div>
+          <Link
+            href="/shop"
+            id="home-view-all-products-btn"
+            className="mt-4 sm:mt-0 inline-flex items-center gap-2 bg-[#E91E63] text-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-[#d81b5c] transition-all"
+          >
+            <span>View All Treats</span>
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+          {products.slice(0, 8).map(product => {
+            const numericPrice = typeof product.price === 'number'
+              ? product.price
+              : parseFloat(String(product.price).replace(/[^0-9.]/g, '')) || 0;
+            return (
+              <ProductCard
+                key={product.id}
+                product={{
+                  id: product.id,
+                  name: product.name,
+                  price: numericPrice,
+                  category: product.category || 'General',
+                  rating: product.rating || 5.0,
+                  reviews: product.reviews || 24,
+                  image: product.image || '/hero1.png'
+                }}
+                onAddToCart={(prod, qty) =>
+                  addToCart({
+                    id: typeof prod.id === 'number' ? prod.id : Number(prod.id) || 1,
+                    name: prod.name,
+                    price: prod.price,
+                    flavor: prod.category,
+                    image: prod.image
+                  }, qty)
+                }
+              />
+            );
+          })}
         </div>
       </section>
 

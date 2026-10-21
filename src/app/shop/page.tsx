@@ -5,81 +5,15 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ShoppingBag, Star, Filter, Search, AlertCircle, X } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
-import { getPersistentData } from '@/utils/storage';
+import { getStoredProductsAsync, getStoredCategoriesAsync } from '@/utils/storage';
+import { DEFAULT_PRODUCTS, DEFAULT_CATEGORIES as CATALOG_CATEGORIES } from '@/data/catalog';
 import ProductCard from '@/components/product/ProductCard';
 
-// Mock Product Data
-const DEFAULT_PRODUCTS = [
-  {
-    id: 1,
-    name: "Strawberry Dream Box",
-    price: 35.00,
-    category: "Love Gifts",
-    rating: 4.9,
-    reviews: 128,
-    image: "/hero1.png"
-  },
-  {
-    id: 2,
-    name: "Classic Chocolate Explosion",
-    price: 40.00,
-    category: "Birthday Gifts",
-    rating: 5.0,
-    reviews: 245,
-    image: "/hero2.png"
-  },
-  {
-    id: 3,
-    name: "Vanilla Funfetti Surprise",
-    price: 32.00,
-    category: "Birthday Gifts",
-    rating: 4.8,
-    reviews: 89,
-    image: "/hero3.png"
-  },
-  {
-    id: 4,
-    name: "Red Velvet Romance",
-    price: 45.00,
-    category: "Love Gifts",
-    rating: 4.9,
-    reviews: 156,
-    image: "/hero4.png"
-  },
-  {
-    id: 5,
-    name: "Golden Congrats Box",
-    price: 38.00,
-    category: "Congrats Gifts",
-    rating: 4.7,
-    reviews: 72,
-    image: "/hero5.png"
-  },
-  {
-    id: 6,
-    name: "Mother's Day Special",
-    price: 50.00,
-    category: "Mother's Day",
-    rating: 5.0,
-    reviews: 310,
-    image: "/hero6.png"
-  },
-  {
-    id: 7,
-    name: "Matcha Magic",
-    price: 36.00,
-    category: "Congrats Gifts",
-    rating: 4.6,
-    reviews: 45,
-    image: "/hero7.png"
-  }
-];
-
-const DEFAULT_CATEGORIES = ["All", "Birthday Gifts", "Love Gifts", "Congrats Gifts", "Mother's Day"];
+const INITIAL_SHOP_CATEGORIES = ["All", ...CATALOG_CATEGORIES.map(c => c.name)];
 
 function ShopContent() {
-  const [products, setProducts] = useState(DEFAULT_PRODUCTS);
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [products, setProducts] = useState<any[]>(DEFAULT_PRODUCTS);
+  const [categories, setCategories] = useState<string[]>(INITIAL_SHOP_CATEGORIES);
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const { addToCart } = useCart();
@@ -104,53 +38,40 @@ function ShopContent() {
   useEffect(() => {
     const loadStoreData = async () => {
       try {
-        let prodsList: any[] | null = await getPersistentData<any[]>('halo_bites_admin_products');
-        if (!prodsList) {
-          const local = localStorage.getItem('halo_bites_admin_products');
-          if (local) prodsList = JSON.parse(local);
-        }
+        const [prodsList, catsList] = await Promise.all([
+          getStoredProductsAsync(),
+          getStoredCategoriesAsync()
+        ]);
 
-        if (prodsList !== null && Array.isArray(prodsList)) {
+        if (prodsList && Array.isArray(prodsList)) {
           const normalized = prodsList.map((p: any) => ({
             id: p.id,
             name: p.name,
             price: typeof p.price === 'number' ? p.price : parseFloat(String(p.price).replace(/[^0-9.]/g, '')) || 0,
             category: p.category || 'General',
+            stock: typeof p.stock === 'number' ? p.stock : 20,
+            status: p.status || 'Active',
             rating: p.rating || 5.0,
             reviews: p.reviews || 12,
-            image: p.image || '/hero1.png'
+            image: p.image || '/hero1.png',
+            description: p.description || ''
           }));
           setProducts(normalized);
 
-          // Merge categories from admin categories and any categories present on products
-          const productCats = normalized.map((p: any) => p.category).filter(Boolean);
-          let availableCats: string[] = [];
-          const savedCats = await getPersistentData<any[]>('halo_bites_admin_categories');
-          if (savedCats && Array.isArray(savedCats)) {
-            availableCats = savedCats
-              .filter((c: any) => c.status !== 'Draft')
-              .map((c: any) => (typeof c === 'string' ? c : c.name))
-              .filter(Boolean);
-          } else {
-            const local = localStorage.getItem('halo_bites_admin_categories');
-            if (local) {
-              const parsed = JSON.parse(local);
-              if (Array.isArray(parsed)) {
-                availableCats = parsed
-                  .filter((c: any) => c.status !== 'Draft')
-                  .map((c: any) => (typeof c === 'string' ? c : c.name))
-                  .filter(Boolean);
-              }
-            }
-          }
+          const availableCats = catsList
+            .filter((c: any) => c.status !== 'Draft')
+            .map((c: any) => (typeof c === 'string' ? c : c.name))
+            .filter(Boolean);
+
+          const productCats = normalized
+            .map((p: any) => p.category)
+            .filter(Boolean);
 
           const combined = Array.from(new Set([...availableCats, ...productCats]));
-          if (combined.length > 0) {
-            setCategories(["All", ...combined]);
-          }
+          setCategories(["All", ...combined]);
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.warn('Error syncing shop store data:', err);
       }
     };
 

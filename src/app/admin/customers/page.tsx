@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Download, Filter, MoreVertical, Mail, Phone } from 'lucide-react';
-import { getPersistentData } from '@/utils/storage';
+import { getPersistentData, isTestOrder } from '@/utils/storage';
 
 interface CustomerItem {
   id: string;
@@ -15,21 +15,13 @@ interface CustomerItem {
   date: string;
 }
 
-const BASE_MOCK_CUSTOMERS: CustomerItem[] = [
-  { id: 'CUS-001', name: 'Eleanor Shellstrop', email: 'eleanor@example.com', orders: 12, spent: 'Rs. 450.00', status: 'Active', date: 'Jan 15, 2026' },
-  { id: 'CUS-002', name: 'Chidi Anagonye', email: 'chidi@example.com', orders: 3, spent: 'Rs. 85.00', status: 'Active', date: 'Mar 02, 2026' },
-  { id: 'CUS-003', name: 'Tahani Al-Jamil', email: 'tahani@example.com', orders: 28, spent: 'Rs. 1,240.00', status: 'VIP', date: 'Nov 12, 2025' },
-  { id: 'CUS-004', name: 'Jason Mendoza', email: 'jason@example.com', orders: 1, spent: 'Rs. 25.00', status: 'Inactive', date: 'Jun 22, 2026' },
-  { id: 'CUS-005', name: 'Michael', email: 'michael@example.com', orders: 8, spent: 'Rs. 320.00', status: 'Active', date: 'Feb 14, 2026' },
-];
-
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<CustomerItem[]>(BASE_MOCK_CUSTOMERS);
+  const [customers, setCustomers] = useState<CustomerItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
   const loadCustomers = async () => {
     try {
-      // 1. Gather all orders from admin and user storage
+      // 1. Gather all real orders from admin and user storage
       let adminOrders = await getPersistentData<any[]>('halo_bites_admin_orders');
       if (!adminOrders) {
         const local = localStorage.getItem('halo_bites_admin_orders');
@@ -44,16 +36,21 @@ export default function CustomersPage() {
         try { userOrders = JSON.parse(localUser); } catch {}
       }
 
-      const allOrders = [...(adminOrders || []), ...(userOrders || [])];
+      // Filter out ANY test orders
+      const cleanAdmin = (adminOrders || []).filter(o => !isTestOrder(o));
+      const cleanUser = (userOrders || []).filter(o => !isTestOrder(o));
+      const allOrders = [...cleanAdmin, ...cleanUser];
 
-      // Map customers by email or name
+      // Map customers strictly by email or name from real placed orders
       const customerMap = new Map<string, CustomerItem>();
-      BASE_MOCK_CUSTOMERS.forEach(c => customerMap.set(c.email.toLowerCase(), c));
 
-      allOrders.forEach((order, idx) => {
+      allOrders.forEach((order) => {
+        if (!order || isTestOrder(order)) return;
         const name = typeof order.customer === 'string'
           ? order.customer
           : `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim();
+
+        if (!name) return;
 
         const email = order.customerDetails?.email || order.customer?.email || `${name.toLowerCase().replace(/\s+/g, '.')}@customer.com`;
         const phone = order.customerDetails?.phone || order.customer?.phone;
@@ -69,7 +66,7 @@ export default function CustomersPage() {
             orders: existing.orders + 1,
             spent: `Rs. ${(parseFloat(existing.spent.replace(/[^0-9.]/g, '')) + totalNum).toFixed(2)}`
           });
-        } else if (name) {
+        } else {
           customerMap.set(emailKey, {
             id: `CUS-${String(customerMap.size + 1).padStart(3, '0')}`,
             name,
@@ -88,6 +85,7 @@ export default function CustomersPage() {
       console.error('Failed to load customers', e);
     }
   };
+
 
   useEffect(() => {
     loadCustomers();
@@ -179,8 +177,13 @@ export default function CustomersPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="p-12 text-center text-zinc-500 font-bold">
-                  No customers found matching "{searchTerm}"
+                <td colSpan={6} className="p-12 text-center text-zinc-400">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <p className="font-bold text-white text-base">No real customer profiles yet</p>
+                    <p className="text-xs text-zinc-400 max-w-sm">
+                      {searchTerm ? `No customers matched "${searchTerm}"` : 'Customer profiles and order histories will be created here automatically when customers make purchases.'}
+                    </p>
+                  </div>
                 </td>
               </tr>
             )}

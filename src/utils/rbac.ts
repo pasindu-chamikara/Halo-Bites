@@ -97,34 +97,10 @@ export interface StaffMember {
 export const INITIAL_STAFF_MEMBERS: StaffMember[] = [
   {
     id: 'STAFF-1',
-    name: 'Dilshan Perera',
+    name: 'Super Admin',
     email: 'adminsuper@halobites.com',
     role: 'super_admin',
     status: 'Active',
-    lastActive: 'Just now'
-  },
-  {
-    id: 'STAFF-2',
-    name: 'Kavindi Silva',
-    email: 'manager@halobites.com',
-    role: 'order_manager',
-    status: 'Active',
-    lastActive: '12 mins ago'
-  },
-  {
-    id: 'STAFF-3',
-    name: 'Sachith Fernando',
-    email: 'inventory@halobites.com',
-    role: 'inventory_manager',
-    status: 'Active',
-    lastActive: '1 hour ago'
-  },
-  {
-    id: 'STAFF-4',
-    name: 'Amara Weerasinghe',
-    email: 'kitchen@halobites.com',
-    role: 'kitchen_staff',
-    status: 'Active',
-    lastActive: 'Active in Kitchen'
+    lastActive: 'Active Now'
   }
 ];

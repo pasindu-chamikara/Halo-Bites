@@ -2,51 +2,31 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Trash2, X, Check, Upload, Image as ImageIcon } from 'lucide-react';
-import { compressImageFile, setPersistentData, getPersistentData } from '@/utils/storage';
+import { 
+  compressImageFile, 
+  getStoredCategoriesAsync, 
+  saveStoredCategories, 
+  getStoredProductsAsync 
+} from '@/utils/storage';
+import { DEFAULT_CATEGORIES, CategoryItem } from '@/data/catalog';
 
 interface Category {
   id: string;
   name: string;
-  count: number;
+  count?: number;
   status: 'Active' | 'Draft';
   description: string;
   image?: string;
 }
 
-const INITIAL_CATEGORIES: Category[] = [
-  { 
-    id: 'CAT-1', 
-    name: 'Signature Cakes', 
-    count: 12, 
-    status: 'Active', 
-    description: 'Our premium custom cakes for all occasions.',
-    image: '/hero1.png'
-  },
-  { 
-    id: 'CAT-2', 
-    name: 'Donuts', 
-    count: 24, 
-    status: 'Active', 
-    description: 'Freshly baked classic and artisanal donuts.',
-    image: '/hero2.png'
-  },
-  { 
-    id: 'CAT-3', 
-    name: 'Macarons', 
-    count: 8, 
-    status: 'Active', 
-    description: 'Delicate French macarons in various flavors.',
-    image: '/hero3.png'
-  },
-  { 
-    id: 'CAT-4', 
-    name: 'Pastries', 
-    count: 15, 
-    status: 'Draft', 
-    description: 'Flaky and buttery morning pastries.',
-    image: '/hero4.png'
-  },
-];
+const INITIAL_CATEGORIES: Category[] = DEFAULT_CATEGORIES.map(c => ({
+  id: c.id,
+  name: c.name,
+  count: c.count ?? 10,
+  status: (c.status as 'Active' | 'Draft') || 'Active',
+  description: c.description,
+  image: c.image || '/hero1.png'
+}));
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
@@ -68,51 +48,41 @@ export default function CategoriesPage() {
   useEffect(() => {
     const loadCategoriesData = async () => {
       try {
-        const saved = await getPersistentData<Category[]>('halo_bites_admin_categories');
-        if (saved && Array.isArray(saved) && saved.length > 0) {
-          setCategories(saved);
-        } else {
-          const local = localStorage.getItem('halo_bites_admin_categories');
-          if (local) {
-            setCategories(JSON.parse(local));
-          } else {
-            setPersistentData('halo_bites_admin_categories', INITIAL_CATEGORIES);
-          }
+        const [savedCats, savedProds] = await Promise.all([
+          getStoredCategoriesAsync(),
+          getStoredProductsAsync()
+        ]);
+        if (savedCats && Array.isArray(savedCats)) {
+          setCategories(savedCats as any);
         }
-
-        const savedProds = await getPersistentData<any[]>('halo_bites_admin_products');
         if (savedProds && Array.isArray(savedProds)) {
           setProducts(savedProds);
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.warn('Error loading categories data:', err);
       }
     };
 
     loadCategoriesData();
 
-    const handleProductsUpdate = async () => {
-      try {
-        const savedProds = await getPersistentData<any[]>('halo_bites_admin_products');
-        if (savedProds && Array.isArray(savedProds)) {
-          setProducts(savedProds);
-        }
-      } catch {}
+    const handleUpdate = () => {
+      loadCategoriesData();
     };
 
-    window.addEventListener('storage', handleProductsUpdate);
-    window.addEventListener('halo_bites_products_updated', handleProductsUpdate);
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('halo_bites_products_updated', handleUpdate);
+    window.addEventListener('halo_bites_categories_updated', handleUpdate);
 
     return () => {
-      window.removeEventListener('storage', handleProductsUpdate);
-      window.removeEventListener('halo_bites_products_updated', handleProductsUpdate);
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('halo_bites_products_updated', handleUpdate);
+      window.removeEventListener('halo_bites_categories_updated', handleUpdate);
     };
   }, []);
 
   const saveCategories = (updated: Category[]) => {
     setCategories(updated);
-    setPersistentData('halo_bites_admin_categories', updated);
-    window.dispatchEvent(new Event('halo_bites_categories_updated'));
+    saveStoredCategories(updated as any);
   };
 
   const getCategoryProductCount = (cat: Category) => {

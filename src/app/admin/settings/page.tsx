@@ -60,8 +60,24 @@ export default function SettingsPage() {
       try {
         const savedStaff = await getPersistentData<StaffMember[]>('halo_bites_admin_staff');
         if (savedStaff && Array.isArray(savedStaff) && savedStaff.length > 0) {
-          setStaffList(savedStaff);
+          let hasSuperAdmin = false;
+          const sanitized = savedStaff
+            .filter(s => !['dilshan@halobites.com', 'kavindi@halobites.com', 'sachith@halobites.com', 'amara@halobites.com'].includes(s.email.toLowerCase()))
+            .map(s => {
+              if (s.email.toLowerCase() === 'adminsuper@halobites.com') {
+                hasSuperAdmin = true;
+                return { ...s, role: 'super_admin' as AdminRole, name: 'Super Admin' };
+              }
+              if (s.role === 'super_admin') {
+                return { ...s, role: 'order_manager' as AdminRole };
+              }
+              return s;
+            });
+          const finalList = hasSuperAdmin ? sanitized : [...INITIAL_STAFF_MEMBERS, ...sanitized];
+          setStaffList(finalList);
+          await setPersistentData('halo_bites_admin_staff', finalList);
         } else {
+          setStaffList(INITIAL_STAFF_MEMBERS);
           await setPersistentData('halo_bites_admin_staff', INITIAL_STAFF_MEMBERS);
         }
 
@@ -79,13 +95,19 @@ export default function SettingsPage() {
 
   const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStaff.name.trim() || !newStaff.email.trim()) return;
+    const emailNorm = newStaff.email.trim().toLowerCase();
+    if (!newStaff.name.trim() || !emailNorm) return;
+
+    if (emailNorm === 'adminsuper@halobites.com') {
+      alert('adminsuper@halobites.com is already the master Super Admin account.');
+      return;
+    }
 
     const createdStaff: StaffMember = {
       id: `STAFF-${Date.now()}`,
       name: newStaff.name.trim(),
-      email: newStaff.email.trim().toLowerCase(),
-      role: newStaff.role,
+      email: emailNorm,
+      role: newStaff.role === 'super_admin' ? 'order_manager' : newStaff.role,
       status: 'Active',
       lastActive: 'Invited'
     };
@@ -122,6 +144,11 @@ export default function SettingsPage() {
   };
 
   const handleDeleteStaff = async (staffId: string, name: string) => {
+    const target = staffList.find(s => s.id === staffId);
+    if (target?.email === 'adminsuper@halobites.com') {
+      alert('Cannot delete the primary Super Administrator account.');
+      return;
+    }
     if (confirm(`Are you sure you want to remove ${name} from admin staff?`)) {
       const updated = staffList.filter(s => s.id !== staffId);
       setStaffList(updated);
@@ -240,16 +267,21 @@ export default function SettingsPage() {
                         </td>
 
                         <td className="p-4">
-                          <select
-                            value={staff.role}
-                            onChange={(e) => handleUpdateStaffRole(staff.id, e.target.value as AdminRole)}
-                            className={`bg-black/60 border px-3 py-1.5 text-xs font-bold uppercase tracking-wider focus:outline-none focus:border-[#E91E63] ${roleMeta.badgeBorder} ${roleMeta.badgeText}`}
-                          >
-                            <option value="super_admin">Super Administrator</option>
-                            <option value="order_manager">Order Manager</option>
-                            <option value="inventory_manager">Inventory Manager</option>
-                            <option value="kitchen_staff">Kitchen & Dispatcher</option>
-                          </select>
+                          {staff.email === 'adminsuper@halobites.com' ? (
+                            <span className="text-xs font-bold uppercase tracking-wider text-[#E91E63] flex items-center gap-1.5">
+                              <Shield size={13} /> Super Administrator (Master)
+                            </span>
+                          ) : (
+                            <select
+                              value={staff.role}
+                              onChange={(e) => handleUpdateStaffRole(staff.id, e.target.value as AdminRole)}
+                              className={`bg-black/60 border px-3 py-1.5 text-xs font-bold uppercase tracking-wider focus:outline-none focus:border-[#E91E63] ${roleMeta.badgeBorder} ${roleMeta.badgeText}`}
+                            >
+                              <option value="order_manager">Order Manager</option>
+                              <option value="inventory_manager">Inventory Manager</option>
+                              <option value="kitchen_staff">Kitchen & Dispatcher</option>
+                            </select>
+                          )}
                         </td>
 
                         <td className="p-4">
@@ -272,9 +304,9 @@ export default function SettingsPage() {
                         <td className="p-4 text-right">
                           <button
                             onClick={() => handleDeleteStaff(staff.id, staff.name)}
-                            disabled={staff.role === 'super_admin' && staffList.filter(s => s.role === 'super_admin').length <= 1}
+                            disabled={staff.email === 'adminsuper@halobites.com'}
                             className="p-2 text-zinc-400 hover:text-red-400 hover:bg-white/5 disabled:opacity-20 transition-colors cursor-pointer"
-                            title="Remove Staff Member"
+                            title={staff.email === 'adminsuper@halobites.com' ? "Primary Super Admin cannot be deleted" : "Remove Staff Member"}
                           >
                             <Trash2 size={15} />
                           </button>
@@ -422,7 +454,6 @@ export default function SettingsPage() {
                       onChange={(e) => setNewStaff(prev => ({ ...prev, role: e.target.value as AdminRole }))}
                       className="w-full bg-black/60 border border-white/20 py-2.5 px-3 text-xs text-white focus:outline-none focus:border-[#E91E63]"
                     >
-                      <option value="super_admin">Super Administrator (Full Access)</option>
                       <option value="order_manager">Order Manager (Orders & Customers)</option>
                       <option value="inventory_manager">Inventory Manager (Products & Stock)</option>
                       <option value="kitchen_staff">Kitchen Staff (Order Baking Display)</option>

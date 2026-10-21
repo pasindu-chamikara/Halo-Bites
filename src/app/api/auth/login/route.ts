@@ -7,7 +7,6 @@ const DEMO_ACCOUNTS: Record<string, string> = {
   'demo@halobites.com': 'password123',
   'user@halobites.com': 'password123',
   'adminsuper@halobites.com': 'Staff@Halo2026!',
-  'admin@halobites.com': 'Staff@Halo2026!',
   'manager@halobites.com': 'Staff@Halo2026!',
   'kitchen@halobites.com': 'Staff@Halo2026!',
 };
@@ -63,7 +62,7 @@ export async function POST(request: Request) {
       message: 'Authentication successful',
       user: {
         email: normalizedEmail,
-        isAdmin: normalizedEmail.startsWith('adminsuper@') || normalizedEmail.startsWith('admin@') || normalizedEmail.startsWith('manager@')
+        isAdmin: normalizedEmail === 'adminsuper@halobites.com' || normalizedEmail.startsWith('manager@') || normalizedEmail.startsWith('inventory@')
       }
     });
 

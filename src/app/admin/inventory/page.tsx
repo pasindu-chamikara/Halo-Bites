@@ -2,20 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
-import { getPersistentData } from '@/utils/storage';
-
-const MOCK_PRODUCTS = [
-  { id: 1, name: 'Strawberry Dream Box', category: 'Love Gifts', price: 'Rs. 35.00', stock: 45, status: 'Active' },
-  { id: 2, name: 'Classic Chocolate Explosion', category: 'Birthday Gifts', price: 'Rs. 40.00', stock: 12, status: 'Low Stock' },
-  { id: 3, name: 'Vanilla Funfetti Surprise', category: 'Birthday Gifts', price: 'Rs. 32.00', stock: 89, status: 'Active' },
-  { id: 4, name: 'Red Velvet Romance', category: 'Love Gifts', price: 'Rs. 45.00', stock: 0, status: 'Out of Stock' },
-  { id: 5, name: 'Golden Congrats Box', category: 'Congrats Gifts', price: 'Rs. 38.00', stock: 30, status: 'Active' },
-  { id: 6, name: "Mother's Day Special", category: "Mother's Day", price: 'Rs. 50.00', stock: 15, status: 'Active' },
-  { id: 7, name: 'Matcha Magic', category: 'Congrats Gifts', price: 'Rs. 36.00', stock: 22, status: 'Active' },
-];
+import { getStoredProductsAsync } from '@/utils/storage';
+import { DEFAULT_PRODUCTS, ProductItem } from '@/data/catalog';
 
 export default function AdminInventory() {
-  const [products, setProducts] = useState(MOCK_PRODUCTS);
+  const [products, setProducts] = useState<any[]>(DEFAULT_PRODUCTS);
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadProducts = async () => {
@@ -26,21 +17,12 @@ export default function AdminInventory() {
           price: typeof p.price === 'string' ? p.price.replace(/^\$\s*/, 'Rs. ') : `Rs. ${p.price || 0}`
         }));
 
-      const saved = await getPersistentData<any[]>('halo_bites_admin_products');
-      if (saved !== null && Array.isArray(saved)) {
-        setProducts(normalize(saved));
-        return;
+      const prods = await getStoredProductsAsync();
+      if (prods && Array.isArray(prods)) {
+        setProducts(normalize(prods));
       }
-      const local = localStorage.getItem('halo_bites_admin_products');
-      if (local !== null) {
-        const parsed = JSON.parse(local);
-        if (Array.isArray(parsed)) {
-          setProducts(normalize(parsed));
-          return;
-        }
-      }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn("Failed to load inventory products:", err);
     }
   };
 

@@ -3,7 +3,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Search, Plus, Trash2, Edit2, X, Check, Filter, ExternalLink, Image as ImageIcon, Upload, RefreshCw } from 'lucide-react';
-import { setPersistentData, getPersistentData, compressImageFile, freeLocalStorageQuota } from '@/utils/storage';
+import { 
+  setPersistentData, 
+  getPersistentData, 
+  compressImageFile, 
+  freeLocalStorageQuota,
+  getStoredCategoriesAsync,
+  getStoredProductsAsync,
+  saveStoredProducts,
+  saveStoredCategories,
+  purgeAllTestDataFromBrowser
+} from '@/utils/storage';
+import { DEFAULT_CATEGORIES as CATALOG_CATEGORIES, DEFAULT_PRODUCTS } from '@/data/catalog';
 
 export interface Product {
   id: number | string;
@@ -15,50 +26,17 @@ export interface Product {
   image?: string;
 }
 
-const INITIAL_PRODUCTS: Product[] = [
-  { id: 1, name: 'Strawberry Dream Box', category: 'Love Gifts', price: 'Rs. 35.00', stock: 45, status: 'Active', image: '/hero1.png' },
-  { id: 2, name: 'Classic Chocolate Explosion', category: 'Birthday Gifts', price: 'Rs. 40.00', stock: 12, status: 'Low Stock', image: '/hero2.png' },
-  { id: 3, name: 'Vanilla Funfetti Surprise', category: 'Birthday Gifts', price: 'Rs. 32.00', stock: 89, status: 'Active', image: '/hero3.png' },
-  { id: 4, name: 'Red Velvet Romance', category: 'Love Gifts', price: 'Rs. 45.00', stock: 0, status: 'Out of Stock', image: '/hero4.png' },
-  { id: 5, name: 'Golden Congrats Box', category: 'Congrats Gifts', price: 'Rs. 38.00', stock: 30, status: 'Active', image: '/hero5.png' },
-  { id: 6, name: "Mother's Day Special", category: "Mother's Day", price: 'Rs. 50.00', stock: 15, status: 'Active', image: '/hero6.png' },
-  { id: 7, name: 'Matcha Magic', category: 'Congrats Gifts', price: 'Rs. 36.00', stock: 22, status: 'Active', image: '/hero7.png' },
-];
+const INITIAL_PRODUCTS: Product[] = DEFAULT_PRODUCTS.map(p => ({
+  id: p.id,
+  name: p.name,
+  category: p.category,
+  price: typeof p.price === 'string' ? p.price : `Rs. ${p.price}`,
+  stock: p.stock ?? 20,
+  status: p.status ?? 'Active',
+  image: p.image || '/hero1.png'
+}));
 
-const DEFAULT_CATEGORIES: string[] = [
-  'Signature Cakes',
-  'Donuts',
-  'Macarons',
-  'Pastries',
-  'Birthday Gifts',
-  'Love Gifts',
-  'Congrats Gifts',
-  "Mother's Day"
-];
-
-// Helper to load categories from localStorage or fallback
-const getStoredCategories = (): string[] => {
-  if (typeof window === 'undefined') return DEFAULT_CATEGORIES;
-  try {
-    const saved = localStorage.getItem('halo_bites_admin_categories');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const names = parsed
-          .map((cat: any) => (typeof cat === 'string' ? cat : cat?.name))
-          .filter((name: any): name is string => typeof name === 'string' && name.trim().length > 0)
-          .map((name: string) => name.trim());
-
-        if (names.length > 0) {
-          return Array.from(new Set(names));
-        }
-      }
-    }
-  } catch (err) {
-    console.error("Failed to load categories from storage", err);
-  }
-  return DEFAULT_CATEGORIES;
-};
+const DEFAULT_CATEGORIES: string[] = CATALOG_CATEGORIES.map(c => c.name);
 
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
@@ -67,6 +45,7 @@ export default function AdminProducts() {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isPurging, setIsPurging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
@@ -81,43 +60,41 @@ export default function AdminProducts() {
   });
   const [isCustomCategory, setIsCustomCategory] = useState(false);
 
-  // Refresh categories from localStorage
-  const refreshCategories = () => {
-    const loaded = getStoredCategories();
-    setCategories(loaded);
-    return loaded;
+  // Refresh categories from persistent storage
+  const refreshCategories = async () => {
+    try {
+      const catsList = await getStoredCategoriesAsync();
+      const names = catsList
+        .filter(c => c.status !== 'Draft')
+        .map(c => c.name)
+        .filter(Boolean);
+      if (names.length > 0) {
+        const uniqueNames = Array.from(new Set(names));
+        setCategories(uniqueNames);
+        return uniqueNames;
+      }
+    } catch (err) {
+      console.warn("Failed to refresh categories:", err);
+    }
+    setCategories(DEFAULT_CATEGORIES);
+    return DEFAULT_CATEGORIES;
   };
 
   const loadProductsFromStorage = async () => {
     freeLocalStorageQuota();
     try {
-      const normalize = (list: Product[]) =>
+      const normalize = (list: any[]) =>
         list.map(p => ({
           ...p,
           price: typeof p.price === 'string' ? p.price.replace(/^\$\s*/, 'Rs. ') : `Rs. ${p.price || 0}`
         }));
 
-      const savedProducts = await getPersistentData<Product[]>('halo_bites_admin_products');
-      if (savedProducts !== null && Array.isArray(savedProducts)) {
-        const normalized = normalize(savedProducts);
-        setProducts(normalized);
-        return;
+      const prods = await getStoredProductsAsync();
+      if (prods && Array.isArray(prods)) {
+        setProducts(normalize(prods));
       }
-      const local = localStorage.getItem('halo_bites_admin_products');
-      if (local !== null) {
-        const parsed = JSON.parse(local);
-        if (Array.isArray(parsed)) {
-          const normalized = normalize(parsed);
-          setProducts(normalized);
-          setPersistentData('halo_bites_admin_products', normalized);
-          return;
-        }
-      }
-      // If not yet in storage, seed with INITIAL_PRODUCTS
-      setPersistentData('halo_bites_admin_products', INITIAL_PRODUCTS);
-      setProducts(INITIAL_PRODUCTS);
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn("Failed to load products from storage:", err);
     }
   };
 
@@ -150,16 +127,14 @@ export default function AdminProducts() {
 
   const saveProducts = (updated: Product[]) => {
     setProducts(updated);
-    setPersistentData('halo_bites_admin_products', updated);
-    window.dispatchEvent(new Event('halo_bites_products_updated'));
+    saveStoredProducts(updated as any);
   };
 
   const handleDeleteProduct = (id: number | string, name: string) => {
     if (window.confirm(`Are you sure you want to delete product "${name}"?`)) {
       setProducts(prev => {
         const updated = prev.filter(p => String(p.id) !== String(id));
-        setPersistentData('halo_bites_admin_products', updated);
-        window.dispatchEvent(new Event('halo_bites_products_updated'));
+        saveStoredProducts(updated as any);
         return updated;
       });
     }
@@ -178,8 +153,8 @@ export default function AdminProducts() {
     }
   };
 
-  const openAddModal = () => {
-    const currentCats = refreshCategories();
+  const openAddModal = async () => {
+    const currentCats = await refreshCategories();
     setEditingProduct(null);
     setIsCustomCategory(false);
     const initialCategory = currentCats.length > 0 ? currentCats[0] : '';
@@ -195,8 +170,8 @@ export default function AdminProducts() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (product: Product) => {
-    const currentCats = refreshCategories();
+  const openEditModal = async (product: Product) => {
+    const currentCats = await refreshCategories();
     setEditingProduct(product);
     setIsCustomCategory(false);
 
@@ -216,7 +191,7 @@ export default function AdminProducts() {
     setIsModalOpen(true);
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const finalCategory = (isCustomCategory ? formData.customCategory : formData.category).trim();
 
@@ -230,8 +205,7 @@ export default function AdminProducts() {
     // If the user typed a new custom category, register it into halo_bites_admin_categories too
     if (isCustomCategory && finalCategory) {
       try {
-        const saved = localStorage.getItem('halo_bites_admin_categories');
-        const catsList = saved ? JSON.parse(saved) : [];
+        const catsList = await getStoredCategoriesAsync();
         const exists = catsList.some((c: any) =>
           (typeof c === 'string' ? c : c?.name)?.toLowerCase() === finalCategory.toLowerCase()
         );
@@ -240,13 +214,12 @@ export default function AdminProducts() {
             id: `CAT-${Date.now().toString().slice(-4)}`,
             name: finalCategory,
             count: 1,
-            status: 'Active',
+            status: 'Active' as const,
             description: `Category for ${finalCategory}`,
             image: finalImage
           };
           const updatedCats = [...catsList, newCatObj];
-          localStorage.setItem('halo_bites_admin_categories', JSON.stringify(updatedCats));
-          window.dispatchEvent(new Event('halo_bites_categories_updated'));
+          await saveStoredCategories(updatedCats as any);
           setCategories(prev => Array.from(new Set([...prev, finalCategory])));
         }
       } catch (err) {

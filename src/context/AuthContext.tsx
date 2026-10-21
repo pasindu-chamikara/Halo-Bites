@@ -19,7 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function resolveDefaultRole(email: string): AdminRole | null {
   const norm = email.trim().toLowerCase();
-  if (norm.startsWith('adminsuper@') || norm === 'admin@halobites.com') {
+  if (norm === 'adminsuper@halobites.com') {
     return 'super_admin';
   }
   if (norm.startsWith('manager@') || norm.startsWith('order@') || norm.startsWith('orders@')) {

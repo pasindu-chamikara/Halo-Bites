@@ -19,7 +19,7 @@ import {
   RefreshCw,
   ChevronDown
 } from 'lucide-react';
-import { getPersistentData, setPersistentData } from '@/utils/storage';
+import { getPersistentData, setPersistentData, isTestOrder } from '@/utils/storage';
 
 export interface OrderItem {
   id?: number | string;
@@ -64,71 +64,8 @@ export interface AdminOrder {
   items?: OrderItem[];
 }
 
-const INITIAL_MOCK_ORDERS: AdminOrder[] = [
-  { 
-    id: 'ORD-1001', 
-    customer: 'Jane Doe', 
-    customerDetails: { email: 'jane.doe@example.com', phone: '+94 77 111 2233', address: '18 Galle Road', city: 'Colombo 03' },
-    date: 'Oct 8, 2026', 
-    total: 'Rs. 114.00', 
-    rawTotal: 114.00,
-    status: 'Processing',
-    items: [{ name: 'Vanilla Funfetti Surprise', quantity: 2, price: 32.00, image: '/hero3.png' }]
-  },
-  { 
-    id: 'ORD-1002', 
-    customer: 'John Smith', 
-    customerDetails: { email: 'john.smith@example.com', phone: '+94 77 222 3344', address: '45 Duplication Road', city: 'Colombo 04' },
-    date: 'Oct 7, 2026', 
-    total: 'Rs. 35.00', 
-    rawTotal: 35.00,
-    status: 'Delivered',
-    items: [{ name: 'Strawberry Dream Box', quantity: 1, price: 35.00, image: '/hero1.png' }]
-  },
-  { 
-    id: 'ORD-1003', 
-    customer: 'Alice Johnson', 
-    customerDetails: { email: 'alice.j@example.com', phone: '+94 77 333 4455', address: '12 Kynsey Road', city: 'Colombo 07' },
-    date: 'Oct 7, 2026', 
-    total: 'Rs. 85.00', 
-    rawTotal: 85.00,
-    status: 'In Transit',
-    items: [{ name: 'Classic Chocolate Explosion', quantity: 2, price: 40.00, image: '/hero2.png' }]
-  },
-  { 
-    id: 'ORD-1004', 
-    customer: 'Bob Brown', 
-    customerDetails: { email: 'bob.b@example.com', phone: '+94 77 444 5566', address: '88 Havelock Road', city: 'Colombo 05' },
-    date: 'Oct 6, 2026', 
-    total: 'Rs. 45.00', 
-    rawTotal: 45.00,
-    status: 'Delivered',
-    items: [{ name: 'Red Velvet Romance', quantity: 1, price: 45.00, image: '/hero4.png' }]
-  },
-  { 
-    id: 'ORD-1005', 
-    customer: 'Charlie Davis', 
-    customerDetails: { email: 'charlie.d@example.com', phone: '+94 77 555 6677', address: '102 Ward Place', city: 'Colombo 07' },
-    date: 'Oct 5, 2026', 
-    total: 'Rs. 150.00', 
-    rawTotal: 150.00,
-    status: 'Cancelled',
-    items: [{ name: 'Mother\'s Day Special', quantity: 3, price: 50.00, image: '/hero6.png' }]
-  },
-  { 
-    id: 'ORD-1006', 
-    customer: 'Eva Green', 
-    customerDetails: { email: 'eva.g@example.com', phone: '+94 77 666 7788', address: '33 Horton Place', city: 'Colombo 07' },
-    date: 'Oct 4, 2026', 
-    total: 'Rs. 75.00', 
-    rawTotal: 75.00,
-    status: 'Delivered',
-    items: [{ name: 'Golden Congrats Box', quantity: 2, price: 38.00, image: '/hero5.png' }]
-  },
-];
-
 export default function AdminOrders() {
-  const [orders, setOrders] = useState<AdminOrder[]>(INITIAL_MOCK_ORDERS);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [activeOrder, setActiveOrder] = useState<AdminOrder | null>(null);
@@ -145,27 +82,32 @@ export default function AdminOrders() {
         }
       }
 
-      // 2. Also check user orders from checkout to guarantee no orders are missed
+      // Filter out ANY test orders
+      if (adminOrders && Array.isArray(adminOrders)) {
+        adminOrders = adminOrders.filter(o => !isTestOrder(o));
+      }
+
+      // 2. Check user orders from checkout
       let userOrders: any[] = [];
       const localUser = localStorage.getItem('halo_bites_user_orders');
       if (localUser) {
         try { userOrders = JSON.parse(localUser); } catch {}
       }
 
-      // Merge user orders into admin orders if not present
+      // Merge real orders
       const combinedMap = new Map<string, AdminOrder>();
 
-      // Put initial mock orders first as base
-      INITIAL_MOCK_ORDERS.forEach(order => combinedMap.set(order.id, order));
-
-      // Merge saved admin orders
+      // Saved admin orders
       if (adminOrders && Array.isArray(adminOrders)) {
-        adminOrders.forEach(order => combinedMap.set(order.id, order));
+        adminOrders.forEach(order => {
+          if (order && order.id && !isTestOrder(order)) combinedMap.set(order.id, order);
+        });
       }
 
-      // Merge any user-placed orders
+      // User-placed orders from checkout
       if (userOrders && Array.isArray(userOrders)) {
         userOrders.forEach(o => {
+          if (!o || !o.id || isTestOrder(o)) return;
           const customerName = typeof o.customer === 'string'
             ? o.customer
             : `${o.customer?.firstName || ''} ${o.customer?.lastName || ''}`.trim() || 'Customer';
@@ -189,24 +131,17 @@ export default function AdminOrders() {
         });
       }
 
-      // Sort with newest orders (e.g. non-ORD-100x or recent) first
-      const mergedList = Array.from(combinedMap.values()).sort((a, b) => {
-        // Newly placed ORD-9xxxx or non-standard IDs first
-        const isStandardA = a.id.startsWith('ORD-100');
-        const isStandardB = b.id.startsWith('ORD-100');
-        if (!isStandardA && isStandardB) return -1;
-        if (isStandardA && !isStandardB) return 1;
-        return 0;
-      });
-
+      const mergedList = Array.from(combinedMap.values());
       setOrders(mergedList);
-      // Ensure sync back to storage
-      setPersistentData('halo_bites_admin_orders', mergedList);
+      // Keep persistent storage clean without mock orders
+      await setPersistentData('halo_bites_admin_orders', mergedList);
+      localStorage.setItem('halo_bites_admin_orders', JSON.stringify(mergedList));
       localStorage.setItem('halo_bites_admin_orders', JSON.stringify(mergedList));
     } catch (e) {
       console.error('Failed to load orders', e);
     }
   };
+
 
   useEffect(() => {
     loadOrders();
@@ -387,8 +322,14 @@ export default function AdminOrders() {
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="p-12 text-center text-zinc-500 font-bold">
-                  No orders found matching "{searchTerm}"
+                <td colSpan={7} className="p-12 text-center text-zinc-400">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Package size={28} className="text-zinc-600 mb-1" />
+                    <p className="font-bold text-white text-base">No real customer orders found</p>
+                    <p className="text-xs text-zinc-400 max-w-sm">
+                      {searchTerm ? `No orders matched "${searchTerm}"` : 'Live customer purchases placed through the website will appear here in real time.'}
+                    </p>
+                  </div>
                 </td>
               </tr>
             )}

@@ -20,7 +20,6 @@ const DEMO_ACCOUNTS: Record<string, string> = {
   'demo@halobites.com': 'password123',
   'user@halobites.com': 'password123',
   'adminsuper@halobites.com': 'Staff@Halo2026!',
-  'admin@halobites.com': 'Staff@Halo2026!',
   'manager@halobites.com': 'Staff@Halo2026!',
   'kitchen@halobites.com': 'Staff@Halo2026!',
 };
@@ -198,9 +197,9 @@ export default function LoginPage() {
 
     setTimeout(() => {
       if (
-        normalizedEmail.startsWith('adminsuper@') ||
-        normalizedEmail.startsWith('admin@') ||
-        normalizedEmail.startsWith('manager@')
+        normalizedEmail === 'adminsuper@halobites.com' ||
+        normalizedEmail.startsWith('manager@') ||
+        normalizedEmail.startsWith('inventory@')
       ) {
         router.push('/admin');
       } else {
