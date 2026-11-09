@@ -567,13 +567,13 @@ export default function Home() {
       </section>
 
       {/* Our Sweetest Moments */}
-      <section className="container mx-auto px-4 sm:px-8 max-w-5xl py-12 text-center">
+      <section className="container mx-auto px-4 sm:px-8 max-w-5xl py-12 text-center border-0 border-none">
         <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-black mb-12">Our Sweetest Moments</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 auto-rows-[200px]">
-          <div className="col-span-1 row-span-2 rounded-none overflow-hidden border border-zinc-200 group">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-0 auto-rows-[200px] overflow-hidden rounded-xl border-0 border-none shadow-none">
+          <div className="col-span-1 row-span-2 overflow-hidden border-0 border-none shadow-none group">
             <img 
               src="/1.jpg" 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 border-0 border-none" 
               alt="Artisan celebration cake presentation with delicate berry toppings" 
               onError={(e) => {
                 const target = e.currentTarget;
@@ -582,10 +582,10 @@ export default function Home() {
               }}
             />
           </div>
-          <div className="col-span-1 row-span-1 rounded-none overflow-hidden border border-zinc-200 group">
+          <div className="col-span-1 row-span-1 overflow-hidden border-0 border-none shadow-none group">
             <img 
               src="/2.jpg" 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 border-0 border-none" 
               alt="Handcrafted cupcakes with rich swirl frosting and sprinkles" 
               onError={(e) => {
                 const target = e.currentTarget;
@@ -594,10 +594,10 @@ export default function Home() {
               }}
             />
           </div>
-          <div className="col-span-1 row-span-2 rounded-none overflow-hidden border border-zinc-200 group">
+          <div className="col-span-1 row-span-2 overflow-hidden border-0 border-none shadow-none group">
             <img 
               src="/3.jpg" 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 border-0 border-none" 
               alt="Freshly boxed luxury dessert assortment ready for gifting" 
               onError={(e) => {
                 const target = e.currentTarget;
@@ -606,10 +606,10 @@ export default function Home() {
               }}
             />
           </div>
-          <div className="col-span-1 row-span-2 rounded-none overflow-hidden border border-zinc-200 group">
+          <div className="col-span-1 row-span-2 overflow-hidden border-0 border-none shadow-none group">
             <img 
               src="/4.jpg" 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 border-0 border-none" 
               alt="Delightful table spread of handcrafted bakery treats" 
               onError={(e) => {
                 const target = e.currentTarget;
@@ -618,10 +618,10 @@ export default function Home() {
               }}
             />
           </div>
-          <div className="col-span-1 row-span-1 rounded-none overflow-hidden border border-zinc-200 group">
+          <div className="col-span-1 row-span-1 overflow-hidden border-0 border-none shadow-none group">
             <img 
               src="/5.jpg" 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 border-0 border-none" 
               alt="Gourmet pastry showcase celebrating sweet milestones" 
               onError={(e) => {
                 const target = e.currentTarget;

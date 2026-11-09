@@ -51,11 +51,18 @@ export default function Navbar() {
             <Link 
               href="/" 
               id="nav-logo-link"
-              className="text-xl sm:text-[22px] font-[900] tracking-tight text-[#050505] flex items-center gap-1.5 focus:outline-none"
+              className="flex items-center gap-2 sm:gap-3 focus:outline-none group"
               onClick={() => setMobileMenuOpen(false)}
             >
-              <span>Halo Bites</span>
-              <span className="w-1.5 h-1.5 bg-[#E91E63]"></span>
+              <img 
+                src="/logo.png" 
+                alt="Halo Bites Logo" 
+                className="h-8 sm:h-10 lg:h-12 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+              />
+              <span className="text-xl sm:text-[22px] font-[900] tracking-tight text-[#050505] flex items-center gap-1.5">
+                <span>Halo Bites</span>
+                <span className="w-1.5 h-1.5 bg-[#E91E63]"></span>
+              </span>
             </Link>
           </div>
           
